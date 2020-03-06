@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="MainWin"/>
+  <qresource prefix="icons">
+    <file>media/icons/clear.ico</file>
+    <file>media/icons/save.ico</file>
+    <file>media/icons/start.ico</file>
+    <file>media/icons/stop.ico</file>
+  </qresource>
+</RCC>
