@@ -17,9 +17,15 @@ private:
 	Ui::MainWinClass ui;
 	Data * data;
 	QCustomPlot * plot;
-	int lastId = -1;
+	double lastCustomPlotMs = -1.0;
+
+	const QString APP_NAME = "Analizator pulsu";
+
+	void closeEvent(QCloseEvent *event) override;
 
 	void setupPlot();
+	void titleUnsaved();
+	void titleSaved();
 
 private slots:
 	void startStop(bool toggled);
