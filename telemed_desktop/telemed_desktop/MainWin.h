@@ -14,10 +14,16 @@ public:
 	MainWin(QWidget *parent = Q_NULLPTR);
 
 private:
+	enum Graph {
+		MAIN,
+		BEAT
+	};
+
 	Ui::MainWinClass ui;
 	Data * data;
 	QCustomPlot * plot;
-	double lastCustomPlotMs = -1.0;
+	double lastCustomPlotMsMainData = -1.0;
+	double lastCustomPlotMsBeatData = -1.0;
 
 	const QString APP_NAME = "Analizator pulsu";
 

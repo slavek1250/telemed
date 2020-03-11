@@ -18,6 +18,8 @@ MainWin::MainWin(QWidget *parent)
 	ui.plotLayout->addWidget(plot);
 	setupPlot();
 
+	ui.rangeLn->setValidator(new QRegExpValidator(QRegExp("[1-9]\\d*"), this));
+
 	connect(ui.actionStartStop, &QAction::toggled, this, &MainWin::startStop);
 	connect(ui.actionSaveAs, &QAction::triggered, this, &MainWin::saveToFile);
 	connect(ui.actionClear, &QAction::triggered, this, &MainWin::clear);
@@ -36,7 +38,17 @@ void MainWin::startStop(bool toggled) {
 
 void MainWin::setupPlot() {
 	plot->addGraph();	
-	plot->graph()->setName("Test");
+	plot->graph(Graph::MAIN)->setName(data->getMainDataName());
+	plot->addGraph();
+	plot->graph(Graph::BEAT)->setPen(QPen(Qt::red));
+	//plot->graph(1)->setBrush(QBrush(QPixmap("media/arrow-down-icon.png")));
+	//plot->graph(Graph::BEAT)->setLineStyle(QCPGraph::lsNone);
+	/*plot->graph(Graph::BEAT)->setScatterStyle(
+		QCPScatterStyle(
+			QPixmap("media/arrow-down-icon.png").scaled(30, 30)
+	));*/
+	plot->graph(Graph::BEAT)->setName(data->getBeatDataName());
+
 	plot->legend->setVisible(true);
 	plot->legend->setBrush(QColor(255, 255, 255, 150));
 	//plot->xAxis
@@ -66,7 +78,7 @@ void MainWin::saveToFile() {
 void MainWin::clear() {
 	if (!data->isDataSaved()) {
 		auto ans = QMessageBox::question(this, APP_NAME,
-			"Wymazaæ niezapisane dane?",
+			"Clear not saved data?",
 			QMessageBox::Cancel,
 			QMessageBox::Yes);
 		if (ans != QMessageBox::Yes) {
@@ -77,25 +89,43 @@ void MainWin::clear() {
 	plot->clearGraphs();
 	setupPlot();
 	data->clear();
-	lastCustomPlotMs = -1.0;
+	lastCustomPlotMsMainData = -1.0;
+	lastCustomPlotMsBeatData = -1.0;
 	plot->replot();
 }
 
 void MainWin::receivedNewData() {
 	titleUnsaved();
-	plot->graph()->addData(
-		data->getXData(lastCustomPlotMs),
-		data->getYData(lastCustomPlotMs)
+	plot->graph(Graph::MAIN)->addData(
+		data->getXMainData(lastCustomPlotMsMainData),
+		data->getYMainData(lastCustomPlotMsMainData)
 	);
-	lastCustomPlotMs = data->getLastCustomPlotMs();
-	plot->rescaleAxes();
+	lastCustomPlotMsMainData = data->getLastCustomPlotMsMainData();
+
+	plot->graph(Graph::BEAT)->addData(
+		data->getXBeatData(lastCustomPlotMsBeatData),
+		data->getYBeatData(lastCustomPlotMsBeatData)
+	);
+	lastCustomPlotMsBeatData = data->getLastCustomPlotMsBeatData();
+
+	//plot->rescaleAxes();
+	int range = ui.rangeLn->text().toInt();
+	auto yMinMax = data->getMinMaxForLast(range);
+	plot->yAxis->setRange(
+		yMinMax.first,
+		yMinMax.second
+	);
+	plot->xAxis->setRange(
+		lastCustomPlotMsMainData - range,
+		lastCustomPlotMsBeatData
+	);
 	plot->replot();
 }
 
 void MainWin::closeEvent(QCloseEvent *event) {
 	if (!data->isDataSaved()) {
 		auto ans = QMessageBox::question(this, APP_NAME,
-			"Wyjœæ bez zapisywania?",
+			"Exit program without saving?",
 			QMessageBox::Cancel ,
 			QMessageBox::Yes);
 		if (ans != QMessageBox::Yes) {
