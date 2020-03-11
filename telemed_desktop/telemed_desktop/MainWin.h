@@ -24,6 +24,7 @@ private:
 	QCustomPlot * plot;
 	double lastCustomPlotMsMainData = -1.0;
 	double lastCustomPlotMsBeatData = -1.0;
+	qint64 lastHRMs = -1;
 
 	const QString APP_NAME = "Analizator pulsu";
 

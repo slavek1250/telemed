@@ -19,6 +19,7 @@ MainWin::MainWin(QWidget *parent)
 	setupPlot();
 
 	ui.rangeLn->setValidator(new QRegExpValidator(QRegExp("[1-9]\\d*"), this));
+	ui.rangeLn->clearFocus();
 
 	connect(ui.actionStartStop, &QAction::toggled, this, &MainWin::startStop);
 	connect(ui.actionSaveAs, &QAction::triggered, this, &MainWin::saveToFile);
@@ -42,11 +43,11 @@ void MainWin::setupPlot() {
 	plot->addGraph();
 	plot->graph(Graph::BEAT)->setPen(QPen(Qt::red));
 	//plot->graph(1)->setBrush(QBrush(QPixmap("media/arrow-down-icon.png")));
-	//plot->graph(Graph::BEAT)->setLineStyle(QCPGraph::lsNone);
-	/*plot->graph(Graph::BEAT)->setScatterStyle(
+	plot->graph(Graph::BEAT)->setLineStyle(QCPGraph::lsNone);
+	plot->graph(Graph::BEAT)->setScatterStyle(
 		QCPScatterStyle(
 			QPixmap("media/arrow-down-icon.png").scaled(30, 30)
-	));*/
+	));
 	plot->graph(Graph::BEAT)->setName(data->getBeatDataName());
 
 	plot->legend->setVisible(true);
@@ -92,22 +93,22 @@ void MainWin::clear() {
 	lastCustomPlotMsMainData = -1.0;
 	lastCustomPlotMsBeatData = -1.0;
 	plot->replot();
+	ui.HRLbl->setText("");
+	ui.HRTab->clearContents();
 }
 
 void MainWin::receivedNewData() {
 	titleUnsaved();
+	
 	plot->graph(Graph::MAIN)->addData(
 		data->getXMainData(lastCustomPlotMsMainData),
 		data->getYMainData(lastCustomPlotMsMainData)
 	);
-	lastCustomPlotMsMainData = data->getLastCustomPlotMsMainData();
-
 	plot->graph(Graph::BEAT)->addData(
 		data->getXBeatData(lastCustomPlotMsBeatData),
 		data->getYBeatData(lastCustomPlotMsBeatData)
 	);
-	lastCustomPlotMsBeatData = data->getLastCustomPlotMsBeatData();
-
+	
 	//plot->rescaleAxes();
 	int range = ui.rangeLn->text().toInt();
 	auto yMinMax = data->getMinMaxForLast(range);
@@ -117,9 +118,42 @@ void MainWin::receivedNewData() {
 	);
 	plot->xAxis->setRange(
 		lastCustomPlotMsMainData - range,
-		lastCustomPlotMsBeatData
+		lastCustomPlotMsMainData
 	);
 	plot->replot();
+
+
+	auto hrs = data->getHeartRate(lastHRMs);
+	for (auto hr : hrs) {
+		//ui.HRTab->
+		QTableWidgetItem * begIt = new QTableWidgetItem(
+			QDateTime::fromMSecsSinceEpoch(hr.begin).toString("hh:mm:ss.zzz")
+		);
+		QTableWidgetItem * endIt = new QTableWidgetItem(
+			QDateTime::fromMSecsSinceEpoch(hr.end).toString("hh:mm:ss.zzz")
+		);
+		QTableWidgetItem * hrIt = new QTableWidgetItem(
+			tr("%1").arg(hr.hr)
+		);
+
+		auto row = ui.HRTab->rowCount();
+		ui.HRTab->setRowCount(row + 1);
+		ui.HRTab->setItem(row, 0, begIt);
+		ui.HRTab->setItem(row, 1, endIt);
+		ui.HRTab->setItem(row, 2, hrIt);
+
+	}
+	if (!hrs.isEmpty()) {
+		ui.HRLbl->setText(QString::number(hrs.back().hr));
+		lastHRMs = hrs.back().begin;
+	}
+
+	QScrollBar *sb = ui.HRTab->verticalScrollBar();
+	sb->setValue(sb->maximum());
+	
+
+	lastCustomPlotMsMainData = data->getLastCustomPlotMsMainData();
+	lastCustomPlotMsBeatData = data->getLastCustomPlotMsBeatData();
 }
 
 void MainWin::closeEvent(QCloseEvent *event) {

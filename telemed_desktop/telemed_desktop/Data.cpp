@@ -75,30 +75,18 @@ void Data::clear() {
 }
 
 void Data::saveAs(const QString & filepath) {
-	/*
 	QFile file(filepath);
+
 	if (file.open(QIODevice::WriteOnly)) {
-		QTextStream ts("");
-
-		ts << "Stempel czasowy;Val\n";
-		QVector<QString> rows(xData.size());
-		
-		std::transform(
-			xData.begin(), 
-			xData.end(), 
-			yData.begin(), 
-			rows.begin(), 
-			[](const QDateTime & time, double val)->QString {
-				return (time.toString("yyyy-MM-dd hh:mm:ss.zzz") + ";" + QString::number(val));
-		});
-
+		QTextStream ts(&file);
+		ts << "Time [ms];" << MAIN_DATA_NAME;
+		for (int i = 0; i < xMainData.size(); ++i) {
+			ts << "\n" << (xMainData.at(i) - xMainData.front()) << ";" << yMainData.at(i);
+			//if(i != (xMainData.size() - 1)) ts << "\n";
+		}
 		dataSaved = true;
 	}
-	else {
-		dataSaved = false;
-	}
 	file.close();
-	*/
 }
 
 QString Data::getMainDataName() {
@@ -156,29 +144,29 @@ QVector<double> Data::getYBeatData(double dataLaterThan) {
 }
 
 double Data::getLastCustomPlotMsBeatData() {
-	return ToCustomPlotMs()(xBeatData.back());
+	return xBeatData.isEmpty() ? -1.0 : ToCustomPlotMs()(xBeatData.back());
+}
+
+QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
+	auto it{
+		laterThan == -1.0 ? 
+		heartRateVec.begin() :
+		std::find_if(heartRateVec.begin(), heartRateVec.end(),
+			[laterThan](const HeartRate & hr)->bool {
+				return hr.begin > laterThan;
+	})};
+	QVector<HeartRate> tmp(std::distance(it, heartRateVec.end()));
+	std::copy(it, heartRateVec.end(), tmp.begin());
+	return tmp;
 }
 
 std::pair<double, double> Data::getMinMaxForLast(double secs) {
-	qint64 beg = xMainData.back() - FromCustomPlotMs()(secs);
-	auto itMain = std::find_if(xMainData.begin(), xMainData.end(),
-		[beg](qint64 t)->bool {
-			return t > beg;
-	});
-	beg = xBeatData.back() - FromCustomPlotMs()(secs);
-	auto itBeat = std::find_if(xBeatData.begin(), xBeatData.end(),
-		[beg](qint64 t)->bool {
-			return t > beg;
-	});
-	auto mainBegId = std::distance(xMainData.begin(), itMain);
-	auto beatBegId = std::distance(xBeatData.begin(), itBeat);
-
-	auto minMaxMain = std::minmax_element(yMainData.begin() + mainBegId, yMainData.end());
-	auto minMaxBeat = std::minmax_element(yBeatData.begin() + beatBegId, yBeatData.end());
-
+	auto minMaxMain = minMaxInOneSerie(xMainData, yMainData, secs);
+	auto minMaxBeat = minMaxInOneSerie(xBeatData, yBeatData, secs);
+	
 	return std::pair<double, double>(
-		std::min(*minMaxBeat.first, *minMaxMain.first),
-		std::max(*minMaxBeat.second, *minMaxMain.second)
+		std::min(minMaxBeat.first, minMaxMain.first),
+		std::max(minMaxBeat.second, minMaxMain.second)
 	);
 }
 
@@ -212,6 +200,7 @@ void Data::processNewData(QString && data_) {
 	}
 	
 	std::vector<std::pair<qint64, int>> vals(data.size());
+
 	// map json to vector, normalize time and filter signal
 	std::transform( data.begin(), data.end(), vals.begin(), 
 		[this](const nlohmann::json::value_type & row)->std::pair<qint64, int> {
@@ -220,6 +209,7 @@ void Data::processNewData(QString && data_) {
 				this->filter.filter(row["V"].get<int>())
 			);
 	});
+
 	// sort values
 	std::sort(vals.begin(), vals.end(), 
 		[](const std::pair<qint64, int> & l, const std::pair<qint64, int> & r)->bool {
@@ -242,6 +232,8 @@ void Data::processNewData(QString && data_) {
 			return row.second;
 	});
 
+	/*
+
 	double mean = std::accumulate(vals.begin(), vals.end(), 0,
 		[](int accumulated, const std::pair<qint32, int> & val)->int {
 			return accumulated + val.second;
@@ -263,8 +255,38 @@ void Data::processNewData(QString && data_) {
 		[](const std::pair<qint64, int> & row)->double {
 		return row.second;
 	});
-	//xBeatData.push_back(xMainData.back());
-	//yBeatData.push_back(yMainData.back());
 
+	*/
+	
+	for (auto & sample : vals) {
+		if (beatDetector.addSample(sample.first, sample.second)) {
+			xBeatData.push_back(sample.first);
+			yBeatData.push_back(sample.second + 10);
+
+			if (xBeatData.size() > 1) {
+				auto lastMs = xBeatData.at(xBeatData.size() - 2);
+				auto currMs = xBeatData.back();
+				heartRateVec.push_back(HeartRate{
+					lastMs, currMs, 60000.0 / (currMs - lastMs)
+				});
+			}
+		}
+	}
+	
 	emit receivedNewData();
+}
+
+std::pair<double, double> Data::minMaxInOneSerie(const QVector<qint64>& x, const QVector<double>& y, double range) {
+	std::pair<double, double> minMax(0, 5);
+	if (!x.isEmpty()) {
+		qint64 beg = x.back() - FromCustomPlotMs()(range);
+		auto it = std::find_if(x.begin(), x.end(),
+			[beg](qint64 t)->bool {
+			return t > beg;
+		});
+		auto mainBegId = std::distance(x.begin(), it);
+		auto tmp = std::minmax_element(y.begin() + mainBegId, y.end());
+		minMax = std::pair<double, double>(*tmp.first, *tmp.second);
+	}
+	return minMax;
 }

@@ -89,6 +89,7 @@
     <ClCompile Include="Data.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainWin.cpp" />
+    <ClCompile Include="MAX30100_BeatDetector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MainWin.h" />
@@ -104,6 +105,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="Data.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MAX30100_BeatDetector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
