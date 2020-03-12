@@ -8,15 +8,13 @@
 #include "MAX30100_BeatDetector.h"
 
 auto constexpr TIMER_INTERVAL = 900;
-auto constexpr FILTER_ORDER = 5;
+auto constexpr FILTER_ORDER = 2;
 
 auto constexpr SAMPLING_RATE = 100.0;	// Hz
 auto constexpr LOW_CUT_FREQ = 0.7 / 0.5;
 auto constexpr HIGH_CUT_FREQ = 3 / 0.5;
 
 class QTimer;
-class QNetworkReply;
-class QNetworkAccessManager;
 
 struct HeartRate {
 	qint64 begin = 0;
@@ -55,7 +53,6 @@ private:
 	bool dataSaved = true;
 
 	QTimer * timer;
-	QNetworkAccessManager * manager;
 
 	Iir::Butterworth::BandPass<FILTER_ORDER> filter;
 	BeatDetector beatDetector;
@@ -75,7 +72,6 @@ private:
 	qint64 begMs = 0;
 
 	int getRangeSize(qint64 begin, const QVector<qint64> & vec);
-	void processNewData(QString && data_);
 	std::pair<double, double> minMaxInOneSerie(const QVector<qint64> & x, const QVector<double> & y, double range);
 
 public:
@@ -105,7 +101,7 @@ public:
 
 private slots:
 	void timerTimeout();
-	void networkResponse(QNetworkReply * reply);
+	void processNewData(const QString & data_);
 
 public slots:
 

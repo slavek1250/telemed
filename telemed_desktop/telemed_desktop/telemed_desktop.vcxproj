@@ -59,7 +59,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -75,7 +75,7 @@
       <DebugInformationFormat />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -87,9 +87,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Data.cpp" />
+    <ClCompile Include="DeviceApi.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainWin.cpp" />
     <ClCompile Include="MAX30100_BeatDetector.cpp" />
+    <ClCompile Include="ObjectFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MainWin.h" />
@@ -107,6 +109,8 @@
     <QtMoc Include="Data.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ObjectFactory.h" />
+    <QtMoc Include="DeviceApi.h" />
     <ClInclude Include="MAX30100_BeatDetector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

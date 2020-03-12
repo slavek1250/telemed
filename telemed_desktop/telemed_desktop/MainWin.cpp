@@ -4,27 +4,46 @@
 #include <QStandardPaths>
 #include <QCustomPlot.h>
 #include "Data.h"
+#include "ObjectFactory.h"
+#include "DeviceApi.h"
 
 MainWin::MainWin(QWidget *parent)
 	: QMainWindow(parent)
 {
 	ui.setupUi(this);
-	ui.tableDockWgt->setVisible(false);
-	titleSaved();
 
+	ObjectFactory::createInstance(new DeviceApi(this));
 	data = new Data(this);
 	plot = new QCustomPlot(this);
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
 
+	titleSaved();
+	//ui.tableDockWgt->setVisible(false);
+	//ui.propDockWgt->setVisible(false);
 	ui.plotLayout->addWidget(plot);
 	setupPlot();
 
-	ui.rangeLn->setValidator(new QRegExpValidator(QRegExp("[1-9]\\d*"), this));
-	ui.rangeLn->clearFocus();
+	ui.rangeLn->setValidator(new QRegExpValidator(
+		QRegExp("[1-9]\\d*"), this
+	));
+	ui.ipEdt->setValidator(new QRegExpValidator(
+		QRegExp("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), this
+	));
+	
+
+	devApi->setDeviceIp(ui.ipEdt->text());
+	devApi->setIrLedCurrent(ui.irLedCurrBox->currentIndex());
+	devApi->setRedLedCurrent(ui.redLedCurrBox->currentIndex());
 
 	connect(ui.actionStartStop, &QAction::toggled, this, &MainWin::startStop);
 	connect(ui.actionSaveAs, &QAction::triggered, this, &MainWin::saveToFile);
 	connect(ui.actionClear, &QAction::triggered, this, &MainWin::clear);
 	connect(data, &Data::receivedNewData, this, &MainWin::receivedNewData);
+	connect(ui.ipEdt, &QLineEdit::textChanged, devApi, &DeviceApi::setDeviceIp);
+	connect(ui.irLedCurrBox, qOverload<int>(&QComboBox::currentIndexChanged), 
+		devApi, &DeviceApi::setIrLedCurrent);
+	connect(ui.redLedCurrBox, qOverload<int>(&QComboBox::currentIndexChanged),
+		devApi, &DeviceApi::setRedLedCurrent);
 }
 
 void MainWin::startStop(bool toggled) {
@@ -95,6 +114,7 @@ void MainWin::clear() {
 	plot->replot();
 	ui.HRLbl->setText("");
 	ui.HRTab->clearContents();
+	ui.HRTab->setRowCount(0);
 }
 
 void MainWin::receivedNewData() {

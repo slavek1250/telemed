@@ -37,12 +37,21 @@
     <ClCompile Include="MAX30100_BeatDetector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DeviceApi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="MainWin.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="Data.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="DeviceApi.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -61,6 +70,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MAX30100_BeatDetector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

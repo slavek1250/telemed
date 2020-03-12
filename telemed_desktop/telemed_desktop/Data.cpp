@@ -5,10 +5,9 @@
 #include <QTimer>
 #include <QFile>
 #include <QTextStream>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #include <iir/Butterworth.h>
+#include "ObjectFactory.h"
+#include "DeviceApi.h"
 /*
 	ESP sends:
 		{
@@ -26,9 +25,7 @@ Data::Data(QObject *parent)
 	: QObject(parent)
 {
 	timer = new QTimer(this);
-	manager = new QNetworkAccessManager(this);
 
-	connect(manager, &QNetworkAccessManager::finished, this, &Data::networkResponse);
 	connect(timer, &QTimer::timeout, this, &Data::timerTimeout);
 	timer->setInterval(TIMER_INTERVAL);
 
@@ -44,6 +41,8 @@ Data::Data(QObject *parent)
 		(HIGH_CUT_FREQ - LOW_CUT_FREQ)
 	);
 	
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
+	connect(devApi, &DeviceApi::newMeasuresData, this, &Data::processNewData);
 }
 
 Data::~Data()
@@ -52,10 +51,8 @@ Data::~Data()
 
 void Data::timerTimeout() {
 	dataSaved = false;
-
-	QNetworkRequest request;
-	request.setUrl(QUrl("http://192.168.0.100"));
-	manager->get(request);
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
+	devApi->readNewMeasures();
 }
 
 void Data::start() {
@@ -175,28 +172,16 @@ int Data::getRangeSize(qint64 begin, const QVector<qint64> & vec) {
 	return std::distance(beg, vec.end());
 }
 
-
-void Data::networkResponse(QNetworkReply * reply) {
-	if (reply->error()) {
-		qDebug() << reply->errorString();
-		return;
-	}
-
-	QString answer = reply->readAll();
-	processNewData(std::move(answer));
-}
-
-
-void Data::processNewData(QString && data_) {
+void Data::processNewData(const QString & data_) {
 	nlohmann::json data = nlohmann::json::parse(data_.toStdString());
 
 	// set begin time of measures
 	if (begMs == 0) {
 		auto max = std::max_element(data.begin(), data.end(), 
 			[](const nlohmann::json::value_type & l, const nlohmann::json::value_type & r)->bool {
-				return l["T"].get<unsigned long long>() < r["T"].get<unsigned long long>();
+				return l["ms"].get<unsigned long long>() < r["ms"].get<unsigned long long>();
 		});
-		begMs = QDateTime::currentDateTime().toMSecsSinceEpoch() - (*max)["T"].get<unsigned long long>();
+		begMs = QDateTime::currentDateTime().toMSecsSinceEpoch() - (*max)["ms"].get<unsigned long long>();
 	}
 	
 	std::vector<std::pair<qint64, int>> vals(data.size());
@@ -205,8 +190,8 @@ void Data::processNewData(QString && data_) {
 	std::transform( data.begin(), data.end(), vals.begin(), 
 		[this](const nlohmann::json::value_type & row)->std::pair<qint64, int> {
 			return std::pair<qint64, int>(
-				(row["T"].get<unsigned long long>() + this->begMs),
-				this->filter.filter(row["V"].get<int>())
+				(row["ms"].get<unsigned long long>() + this->begMs),
+				this->filter.filter(row["red"].get<int>())
 			);
 	});
 
@@ -290,3 +275,4 @@ std::pair<double, double> Data::minMaxInOneSerie(const QVector<qint64>& x, const
 	}
 	return minMax;
 }
+

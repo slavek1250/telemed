@@ -108,6 +108,7 @@
      <string>View</string>
     </property>
     <addaction name="actionToolbar"/>
+    <addaction name="actionProperties"/>
     <addaction name="actionTable"/>
    </widget>
    <addaction name="menuFile"/>
@@ -280,6 +281,339 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="propDockWgt">
+   <property name="allowedAreas">
+    <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Sensor properties</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_3">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="ipEdt">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>192.168.4.1</string>
+       </property>
+       <property name="placeholderText">
+        <string>IP address of a device</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_7">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Maximum</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_4">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Red led current</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="redLedCurrBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="currentIndex">
+        <number>8</number>
+       </property>
+       <property name="maxVisibleItems">
+        <number>15</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>0</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>7.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>11</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>14.2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>17.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>20.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>24</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>27.1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>30.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>33.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>37</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>40.2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>43.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>46.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>50</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_7">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>mA</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_6">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Maximum</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>IR led current</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="irLedCurrBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="currentIndex">
+        <number>15</number>
+       </property>
+       <property name="maxVisibleItems">
+        <number>15</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>0</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>7.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>11</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>14.2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>17.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>20.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>24</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>27.1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>30.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>33.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>37</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>40.2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>43.6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>46.8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>50</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_8">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>mA</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionExit">
    <property name="checkable">
     <bool>false</bool>
@@ -353,6 +687,17 @@
     <string>Heart Rate Table</string>
    </property>
   </action>
+  <action name="actionProperties">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Sensor properties</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources>
@@ -416,6 +761,38 @@
     <hint type="sourcelabel">
      <x>39</x>
      <y>389</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionProperties</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>propDockWgt</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>406</x>
+     <y>84</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>propDockWgt</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionProperties</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>406</x>
+     <y>84</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
