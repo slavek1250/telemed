@@ -30,10 +30,7 @@ MainWin::MainWin(QWidget *parent)
 		QRegExp("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), this
 	));
 	
-
 	devApi->setDeviceIp(ui.ipEdt->text());
-	devApi->setIrLedCurrent(ui.irLedCurrBox->currentIndex());
-	devApi->setRedLedCurrent(ui.redLedCurrBox->currentIndex());
 
 	connect(ui.actionStartStop, &QAction::toggled, this, &MainWin::startStop);
 	connect(ui.actionSaveAs, &QAction::triggered, this, &MainWin::saveToFile);
@@ -44,39 +41,50 @@ MainWin::MainWin(QWidget *parent)
 		devApi, &DeviceApi::setIrLedCurrent);
 	connect(ui.redLedCurrBox, qOverload<int>(&QComboBox::currentIndexChanged),
 		devApi, &DeviceApi::setRedLedCurrent);
+	connect(ui.redChckBox, &QCheckBox::toggled, this, &MainWin::setRedLedGraphVisible);
+	connect(ui.irChckBox, &QCheckBox::toggled, this, &MainWin::setIrLedGraphVisible);
+	connect(ui.beatChckBox, &QCheckBox::toggled, this, &MainWin::setBeatGraphVisible);
+	connect(ui.rangeLn, &QLineEdit::editingFinished, this, &MainWin::updateRange);
 }
 
 void MainWin::startStop(bool toggled) {
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
 	ui.actionStartStop->setText(toggled ? "Start" : "Stop");
 	if (toggled) {
 		data->stop();
+		devApi->setIrLedCurrent(0);
+		devApi->setRedLedCurrent(0);
 	}
 	else {
 		data->start();
+		devApi->setIrLedCurrent(ui.irLedCurrBox->currentIndex());
+		devApi->setRedLedCurrent(ui.redLedCurrBox->currentIndex());
 	}
 }
 
 void MainWin::setupPlot() {
-	plot->addGraph();	
-	plot->graph(Graph::MAIN)->setName(data->getMainDataName());
 	plot->addGraph();
-	plot->graph(Graph::BEAT)->setPen(QPen(Qt::red));
-	//plot->graph(1)->setBrush(QBrush(QPixmap("media/arrow-down-icon.png")));
+	plot->graph(Graph::IR)->setPen(QPen(Qt::blue));
+	plot->graph(Graph::IR)->setName(data->getYIrSensorDataName());
+	ui.irChckBox->setText(data->getYIrSensorDataName());
+	plot->addGraph();
+	plot->graph(Graph::RED)->setPen(QPen(Qt::red));
+	plot->graph(Graph::RED)->setName(data->getYRedSensorDataName());
+	ui.redChckBox->setText(data->getYRedSensorDataName());
+	plot->addGraph();
 	plot->graph(Graph::BEAT)->setLineStyle(QCPGraph::lsNone);
 	plot->graph(Graph::BEAT)->setScatterStyle(
 		QCPScatterStyle(
 			QPixmap("media/arrow-down-icon.png").scaled(30, 30)
 	));
 	plot->graph(Graph::BEAT)->setName(data->getBeatDataName());
+	ui.beatChckBox->setText(data->getBeatDataName());
 
 	plot->legend->setVisible(true);
 	plot->legend->setBrush(QColor(255, 255, 255, 150));
-	//plot->xAxis
 	QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
 	dateTicker->setDateTimeFormat("mm:ss.zzz");
 	plot->xAxis->setTicker(dateTicker);
-	//plot->xAxis.setDateTimeFormat("mm:ss:zzz");
-	//plot->xAxis->setTickLabelType(QCPAxis::ltDateTime);
 }
 
 void MainWin::titleUnsaved() {
@@ -85,6 +93,17 @@ void MainWin::titleUnsaved() {
 
 void MainWin::titleSaved() {
 	this->setWindowTitle(APP_NAME);
+}
+
+void MainWin::setGraphVisible(Graph graph, bool visible) {
+	plot->graph(graph)->setVisible(visible);
+	if (visible) {
+		plot->graph(graph)->addToLegend();
+	}
+	else {
+		plot->graph(graph)->removeFromLegend();
+	}
+	updateRange();
 }
 
 void MainWin::saveToFile() {
@@ -110,7 +129,6 @@ void MainWin::clear() {
 	setupPlot();
 	data->clear();
 	lastCustomPlotMsMainData = -1.0;
-	lastCustomPlotMsBeatData = -1.0;
 	plot->replot();
 	ui.HRLbl->setText("");
 	ui.HRTab->clearContents();
@@ -119,43 +137,31 @@ void MainWin::clear() {
 
 void MainWin::receivedNewData() {
 	titleUnsaved();
+	auto tmp = data->getYIrSensorData(lastCustomPlotMsMainData);
+	plot->graph(Graph::IR)->addData(
+		data->getXSensorData(lastCustomPlotMsMainData),
+		tmp
+	);
+	plot->graph(Graph::RED)->addData(
+		data->getXSensorData(lastCustomPlotMsMainData),
+		data->getYRedSensorData(lastCustomPlotMsMainData)
+	);
+	plot->graph(Graph::BEAT)->setData(
+		data->getXBeatData(),
+		data->getYBeatData(ui.rangeLn->text().toInt())
+	);
+	lastCustomPlotMsMainData = data->getLastSensorDataCustomPlotMs();
+	updateRange();
 	
-	plot->graph(Graph::MAIN)->addData(
-		data->getXMainData(lastCustomPlotMsMainData),
-		data->getYMainData(lastCustomPlotMsMainData)
-	);
-	plot->graph(Graph::BEAT)->addData(
-		data->getXBeatData(lastCustomPlotMsBeatData),
-		data->getYBeatData(lastCustomPlotMsBeatData)
-	);
-	
-	//plot->rescaleAxes();
-	int range = ui.rangeLn->text().toInt();
-	auto yMinMax = data->getMinMaxForLast(range);
-	plot->yAxis->setRange(
-		yMinMax.first,
-		yMinMax.second
-	);
-	plot->xAxis->setRange(
-		lastCustomPlotMsMainData - range,
-		lastCustomPlotMsMainData
-	);
-	plot->replot();
-
-
 	auto hrs = data->getHeartRate(lastHRMs);
 	for (auto hr : hrs) {
 		//ui.HRTab->
 		QTableWidgetItem * begIt = new QTableWidgetItem(
-			QDateTime::fromMSecsSinceEpoch(hr.begin).toString("hh:mm:ss.zzz")
-		);
+			hr.getBeginTimeStr());
 		QTableWidgetItem * endIt = new QTableWidgetItem(
-			QDateTime::fromMSecsSinceEpoch(hr.end).toString("hh:mm:ss.zzz")
-		);
+			hr.getEndTimeStr());
 		QTableWidgetItem * hrIt = new QTableWidgetItem(
-			tr("%1").arg(hr.hr)
-		);
-
+			hr.getHRStr());
 		auto row = ui.HRTab->rowCount();
 		ui.HRTab->setRowCount(row + 1);
 		ui.HRTab->setItem(row, 0, begIt);
@@ -164,16 +170,40 @@ void MainWin::receivedNewData() {
 
 	}
 	if (!hrs.isEmpty()) {
-		ui.HRLbl->setText(QString::number(hrs.back().hr));
-		lastHRMs = hrs.back().begin;
+		ui.HRLbl->setText(QString::number(hrs.back().getHR()));
+		lastHRMs = hrs.back().getBeginMs();
 	}
 
 	QScrollBar *sb = ui.HRTab->verticalScrollBar();
 	sb->setValue(sb->maximum());
-	
+}
 
-	lastCustomPlotMsMainData = data->getLastCustomPlotMsMainData();
-	lastCustomPlotMsBeatData = data->getLastCustomPlotMsBeatData();
+void MainWin::setRedLedGraphVisible(bool visible) {
+	setGraphVisible(Graph::RED, visible);
+	data->setRedLedEnabled(visible);
+}
+
+void MainWin::setIrLedGraphVisible(bool visible) {
+	setGraphVisible(Graph::IR, visible);
+	data->setIrLedEnabled(visible);
+}
+
+void MainWin::setBeatGraphVisible(bool visible) {
+	setGraphVisible(Graph::BEAT, visible);
+}
+
+void MainWin::updateRange() {
+	int range = ui.rangeLn->text().toInt();
+	auto yMinMax = data->getSensorDataMinMax(range);
+	double div = std::pow(10, std::floor(std::log10(yMinMax.second - yMinMax.first)));
+	double min = std::floor(yMinMax.first / div - 1) * div;
+	double max = std::ceil(yMinMax.second / div + 1) * div;
+	plot->yAxis->setRange(min, max);
+	plot->xAxis->setRange(
+		lastCustomPlotMsMainData - range,
+		lastCustomPlotMsMainData
+	);
+	plot->replot();
 }
 
 void MainWin::closeEvent(QCloseEvent *event) {
@@ -187,5 +217,8 @@ void MainWin::closeEvent(QCloseEvent *event) {
 			return;
 		}
 	}
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
+	devApi->setIrLedCurrent(0);
+	devApi->setRedLedCurrent(0);
 	event->accept();
 }

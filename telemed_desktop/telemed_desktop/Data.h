@@ -1,50 +1,20 @@
 #pragma once
 
 #include <QObject>
-#include <queue>
-#include <QMap>
-#include <QDateTime>
+#include <set>
 #include <iir/Butterworth.h>
 #include "MAX30100_BeatDetector.h"
+#include "HeartRate.h"
+#include "SensorData.h"
 
-auto constexpr TIMER_INTERVAL = 900;
+auto constexpr TIMER_INTERVAL = 1000;
 auto constexpr FILTER_ORDER = 2;
 
 auto constexpr SAMPLING_RATE = 100.0;	// Hz
-auto constexpr LOW_CUT_FREQ = 0.7 / 0.5;
-auto constexpr HIGH_CUT_FREQ = 3 / 0.5;
+auto constexpr LOW_CUT_FREQ = 1.4;		// / 0.5;
+auto constexpr HIGH_CUT_FREQ = 6;		// / 0.5;
 
 class QTimer;
-
-struct HeartRate {
-	qint64 begin = 0;
-	qint64 end = 0;
-	double hr = 0.0;
-
-	HeartRate(qint64 begin_, qint64 end_, double hr_) :
-		begin(begin_), end(end_), hr(hr_) {}
-	HeartRate() {}
-};
-struct PlotPoint {
-	qint64 x = 0;
-	double y = 0.0;
-
-	PlotPoint(qint64 x_, double y_) :
-		x(x_), y(y_) {}
-	PlotPoint() {}
-};
-struct ToCustomPlotMs {
-	double operator()(qint64 time) {
-		return time / 1000.0;
-	}
-};
-struct FromCustomPlotMs {
-	qint64 operator()(double ms) {
-		return (ms * 1000 + 0.5);
-	}
-};
-
-
 
 class Data : public QObject
 {
@@ -57,53 +27,60 @@ private:
 	Iir::Butterworth::BandPass<FILTER_ORDER> filter;
 	BeatDetector beatDetector;
 
-	const QString MAIN_DATA_NAME = "HbO2";
+	const QString IR_DATA_NAME = "IR led";
+	const QString RED_DATA_NAME = "Red led";
 	const QString BEAT_DATA_NAME = "Beat";
+	bool irDataEnabled = true;
+	bool redDataEnabled = true;
 
-	QMap<qint64, double> mainData;
-
-	QVector<qint64> xMainData;
-	QVector<double> yMainData;
-	QVector<qint64> xBeatData;
-	QVector<double> yBeatData;
-
-	QVector<HeartRate> heartRateVec;
+	std::set<SensorData> sensorDataSet;
+	std::set<qint64> beatSet;
+	std::set<HeartRate> heartRateSet;
 
 	qint64 begMs = 0;
 
-	int getRangeSize(qint64 begin, const QVector<qint64> & vec);
-	std::pair<double, double> minMaxInOneSerie(const QVector<qint64> & x, const QVector<double> & y, double range);
+	QVector<double> getSensorData(
+		double dataLaterThan, 
+		const std::function<double(const SensorData &)> & fMap);
+	std::set<SensorData>::iterator getRangeBegin(double laterThanCustomPlotMs);
+	std::set<SensorData>::iterator getRangeBegin(qint64 laterThanMs);
+	std::pair<double, double> sensorDataMinMax(
+		const std::set<SensorData>::iterator & begin,
+		const std::set<SensorData>::iterator & end);
+	static double msToCustomPlotMs(qint64 ms);
+	static qint64 customPlotMsToMs(double cMs);
 
 public:
 	Data(QObject *parent);
-	~Data();
+	~Data() {};
 
 	void start();
 	void stop();
 	void clear();
 	void saveAs(const QString & filepath);
-	QString getMainDataName();
-	QString getBeatDataName();
-	QVector<double> getXMainData(double dataLaterThan = -1.0);
-	QVector<double> getYMainData(double dataLaterThan = -1.0);
-	double getLastCustomPlotMsMainData();
-	QVector<double> getXBeatData(double dataLaterThan = -1.0);
-	QVector<double> getYBeatData(double dataLaterThan = -1.0);
-	double getLastCustomPlotMsBeatData();
+
+	void setIrLedEnabled(bool enabled);
+	void setRedLedEnabled(bool enabled);
+
+	QString getYIrSensorDataName() const;
+	QString getYRedSensorDataName() const;
+	QVector<double> getXSensorData(double dataLaterThan = -1.0);
+	QVector<double> getYIrSensorData(double dataLaterThan = -1.0);
+	QVector<double> getYRedSensorData(double dataLaterThan = -1.0);
+	double getLastSensorDataCustomPlotMs();
+	std::pair<double, double> getSensorDataMinMax(int rangeSizeInSeconds);
+
+	QString getBeatDataName() const;
+	QVector<double> getXBeatData();
+	QVector<double> getYBeatData(int rangeSizeInSeconds);
 
 	QVector<HeartRate> getHeartRate(qint64 laterThan = -1);
-
-	//double getMaxForLast(double secs);
-	//double getMinForLast(double secs);
-	std::pair<double, double> getMinMaxForLast(double secs);
 
 	bool isDataSaved() { return dataSaved; };
 
 private slots:
 	void timerTimeout();
 	void processNewData(const QString & data_);
-
-public slots:
 
 signals:
 	void receivedNewData();

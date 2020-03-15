@@ -8,45 +8,23 @@
 #include <iir/Butterworth.h>
 #include "ObjectFactory.h"
 #include "DeviceApi.h"
-/*
-	ESP sends:
-		{
-			data:[
-				{
-					T:uint32_t // ms since device started
-					V:uint16_t // value
-				}, ...
-			]
-		}
-*/
 
 
 Data::Data(QObject *parent)
 	: QObject(parent)
 {
 	timer = new QTimer(this);
-
+	auto devApi = ObjectFactory::getInstance<DeviceApi>();
+	
+	connect(devApi, &DeviceApi::newMeasuresData, this, &Data::processNewData);
 	connect(timer, &QTimer::timeout, this, &Data::timerTimeout);
 	timer->setInterval(TIMER_INTERVAL);
-
-	xMainData = QVector<qint64>();
-	yMainData = QVector<double>();
-	xBeatData = QVector<qint64>();
-	yBeatData = QVector<double>();
-	
 
 	filter.setup(
 		SAMPLING_RATE,
 		(LOW_CUT_FREQ + HIGH_CUT_FREQ) / 2,
 		(HIGH_CUT_FREQ - LOW_CUT_FREQ)
-	);
-	
-	auto devApi = ObjectFactory::getInstance<DeviceApi>();
-	connect(devApi, &DeviceApi::newMeasuresData, this, &Data::processNewData);
-}
-
-Data::~Data()
-{
+	);	
 }
 
 void Data::timerTimeout() {
@@ -64,10 +42,10 @@ void Data::stop() {
 }
 
 void Data::clear() {
-	xMainData.clear();	
-	yMainData.clear();
-	xBeatData.clear();
-	yBeatData.clear();
+	sensorDataSet.clear();
+	beatSet.clear();
+	heartRateSet.clear();
+	begMs = 0;
 	dataSaved = true;
 }
 
@@ -76,100 +54,89 @@ void Data::saveAs(const QString & filepath) {
 
 	if (file.open(QIODevice::WriteOnly)) {
 		QTextStream ts(&file);
-		ts << "Time [ms];" << MAIN_DATA_NAME;
-		for (int i = 0; i < xMainData.size(); ++i) {
-			ts << "\n" << (xMainData.at(i) - xMainData.front()) << ";" << yMainData.at(i);
-			//if(i != (xMainData.size() - 1)) ts << "\n";
+		ts << "Time [ms];" << IR_DATA_NAME << RED_DATA_NAME;
+		for(auto & sd : sensorDataSet) {
+			ts << "\n"
+				<< (sd.getMs() - (*sensorDataSet.begin()).getMs()) << ";"
+				<< sd.getIrLed() << ";" << sd.getRedLed();
 		}
 		dataSaved = true;
 	}
 	file.close();
 }
 
-QString Data::getMainDataName() {
-	return MAIN_DATA_NAME;
+void Data::setIrLedEnabled(bool enabled) {
+	irDataEnabled = enabled;
 }
 
-QString Data::getBeatDataName() {
+void Data::setRedLedEnabled(bool enabled) {
+	redDataEnabled = enabled;
+}
+
+QString Data::getYIrSensorDataName() const {
+	return IR_DATA_NAME;
+}
+
+QString Data::getYRedSensorDataName() const {
+	return RED_DATA_NAME;
+}
+
+QVector<double> Data::getXSensorData(double dataLaterThan) {
+	return getSensorData(dataLaterThan, [](const SensorData & data)->double {
+		return data.toCustomPlotMs();
+	});
+}
+
+QVector<double> Data::getYIrSensorData(double dataLaterThan) {
+	return getSensorData(dataLaterThan, [](const SensorData & data)->double {
+		return data.getIrLed();
+	});
+}
+
+QVector<double> Data::getYRedSensorData(double dataLaterThan) {
+	return getSensorData(dataLaterThan, [](const SensorData & data)->double {
+		return data.getRedLed();
+	});
+}
+
+double Data::getLastSensorDataCustomPlotMs() {
+	return (*sensorDataSet.rbegin()).toCustomPlotMs();
+}
+
+std::pair<double, double> Data::getSensorDataMinMax(int rangeSizeInSeconds) {
+	if (sensorDataSet.empty()) return std::pair<double, double>(0, 1);
+	auto begin = getRangeBegin((*sensorDataSet.rbegin()).getMs() - rangeSizeInSeconds * 1000);
+	if (begin == sensorDataSet.end())
+		begin = sensorDataSet.begin();
+	return sensorDataMinMax(begin, sensorDataSet.end());
+}
+
+QString Data::getBeatDataName() const {
 	return BEAT_DATA_NAME;
 }
 
-QVector<double> Data::getXMainData(double dataLaterThan) {
-	qint64 beg = FromCustomPlotMs()(dataLaterThan);
-	auto size = (dataLaterThan == -1.0) ? xMainData.size() : getRangeSize(beg, xMainData) - 1;
-	QVector<double> x(size);
-	std::transform(
-		xMainData.end() - size, 
-		xMainData.end(), 
-		x.begin(), 
-		ToCustomPlotMs()
-	);
+QVector<double> Data::getXBeatData() {
+	QVector<double> x(beatSet.size());
+	std::transform(beatSet.begin(), beatSet.end(), x.begin(), [this](qint64 ms)->double {
+		return msToCustomPlotMs(ms);
+	});
 	return x;
 }
 
-QVector<double> Data::getYMainData(double dataLaterThan) {
-	qint64 beg = FromCustomPlotMs()(dataLaterThan);
-	auto size = (dataLaterThan==-1.0) ? yMainData.size() : getRangeSize(beg, xMainData) - 1;
-	QVector<double> y(size);
-	std::copy(yMainData.end() - size, yMainData.end(), y.begin());
-	return y;
-}
-
-double Data::getLastCustomPlotMsMainData() {
-	return ToCustomPlotMs()(xMainData.back());
-}
-
-QVector<double> Data::getXBeatData(double dataLaterThan) {
-	qint64 beg = FromCustomPlotMs()(dataLaterThan);
-	auto size = (dataLaterThan == -1.0) ? xBeatData.size() : getRangeSize(beg, xBeatData) - 1;
-	QVector<double> x(size);
-	std::transform(
-		xBeatData.end() - size,
-		xBeatData.end(),
-		x.begin(),
-		ToCustomPlotMs()
-	);
-	return x;
-}
-
-QVector<double> Data::getYBeatData(double dataLaterThan) {
-	qint64 beg = FromCustomPlotMs()(dataLaterThan);
-	auto size = (dataLaterThan == -1.0) ? yBeatData.size() : getRangeSize(beg, xBeatData) - 1;
-	QVector<double> y(size);
-	std::copy(yBeatData.end() - size, yBeatData.end(), y.begin());
-	return y;
-}
-
-double Data::getLastCustomPlotMsBeatData() {
-	return xBeatData.isEmpty() ? -1.0 : ToCustomPlotMs()(xBeatData.back());
+QVector<double> Data::getYBeatData(int rangeSizeInSeconds) {
+	auto begin = getRangeBegin((*sensorDataSet.rbegin()).getMs() - rangeSizeInSeconds * 1000);
+	auto max = sensorDataMinMax(begin, sensorDataSet.end()).second;
+	return QVector<double>(beatSet.size(), max);
 }
 
 QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
-	auto it{
-		laterThan == -1.0 ? 
-		heartRateVec.begin() :
-		std::find_if(heartRateVec.begin(), heartRateVec.end(),
-			[laterThan](const HeartRate & hr)->bool {
-				return hr.begin > laterThan;
-	})};
-	QVector<HeartRate> tmp(std::distance(it, heartRateVec.end()));
-	std::copy(it, heartRateVec.end(), tmp.begin());
-	return tmp;
-}
-
-std::pair<double, double> Data::getMinMaxForLast(double secs) {
-	auto minMaxMain = minMaxInOneSerie(xMainData, yMainData, secs);
-	auto minMaxBeat = minMaxInOneSerie(xBeatData, yBeatData, secs);
-	
-	return std::pair<double, double>(
-		std::min(minMaxBeat.first, minMaxMain.first),
-		std::max(minMaxBeat.second, minMaxMain.second)
-	);
-}
-
-int Data::getRangeSize(qint64 begin, const QVector<qint64> & vec) {
-	auto beg = std::find(vec.begin(), vec.end(), begin);
-	return std::distance(beg, vec.end());
+	auto begin = std::find_if(heartRateSet.begin(), heartRateSet.end(), 
+		[laterThan](const HeartRate & hr)->bool {
+			return hr.getBeginMs() > laterThan;
+	});
+	QVector<HeartRate> hr(std::distance(begin, heartRateSet.end()));
+	std::copy(begin, heartRateSet.end(), hr.begin());
+	return hr;
 }
 
 void Data::processNewData(const QString & data_) {
@@ -184,95 +151,81 @@ void Data::processNewData(const QString & data_) {
 		begMs = QDateTime::currentDateTime().toMSecsSinceEpoch() - (*max)["ms"].get<unsigned long long>();
 	}
 	
-	std::vector<std::pair<qint64, int>> vals(data.size());
-
-	// map json to vector, normalize time and filter signal
-	std::transform( data.begin(), data.end(), vals.begin(), 
-		[this](const nlohmann::json::value_type & row)->std::pair<qint64, int> {
-			return std::pair<qint64, int>(
-				(row["ms"].get<unsigned long long>() + this->begMs),
-				this->filter.filter(row["red"].get<int>())
-			);
-	});
-
-	// sort values
-	std::sort(vals.begin(), vals.end(), 
-		[](const std::pair<qint64, int> & l, const std::pair<qint64, int> & r)->bool {
-			return l.first < r.first;
-	});
-
-	qint64 currNewestVal = (xMainData.isEmpty() ? 0 : xMainData.back());
-	auto it = std::find_if(vals.begin(), vals.end(), 
-		[currNewestVal](const std::pair<qint64, int> & row)->bool {
-			return row.first > currNewestVal;
-	});
-	vals.erase(vals.begin(), it);
-
-	std::transform(vals.begin(), vals.end(), std::back_inserter(xMainData), 
-		[](const std::pair<qint64, int> & row)->qint64 {
-			return row.first;
-	});
-	std::transform(vals.begin(), vals.end(), std::back_inserter(yMainData),
-		[](const std::pair<qint64, int> & row)->double {
-			return row.second;
-	});
-
-	/*
-
-	double mean = std::accumulate(vals.begin(), vals.end(), 0,
-		[](int accumulated, const std::pair<qint32, int> & val)->int {
-			return accumulated + val.second;
-	});
-	mean /= vals.size();
-
-	auto newEnd = std::remove_if(vals.begin(), vals.end(),
-		[mean](const std::pair<qint64, int> & val)->bool {
-			return (val.second < 2 * mean);
-	});
-
-	vals.erase(newEnd, vals.end());
-
-	std::transform(vals.begin(), vals.end(), std::back_inserter(xBeatData),
-		[](const std::pair<qint64, int> & row)->qint64 {
-		return row.first;
-	});
-	std::transform(vals.begin(), vals.end(), std::back_inserter(yBeatData),
-		[](const std::pair<qint64, int> & row)->double {
-		return row.second;
-	});
-
-	*/
+	auto previousLastMs = sensorDataSet.empty() ? 
+		-1 : (*sensorDataSet.rbegin()).getMs();
 	
-	for (auto & sample : vals) {
-		if (beatDetector.addSample(sample.first, sample.second)) {
-			xBeatData.push_back(sample.first);
-			yBeatData.push_back(sample.second + 10);
+	std::transform(data.begin(), data.end(), std::inserter(sensorDataSet, sensorDataSet.begin()),
+		[this](const nlohmann::json::value_type & row)->SensorData {
+			return SensorData(
+				(row["ms"].get<unsigned long long>() + this->begMs),
+				row["ir"].get<int>(),
+				this->filter.filter(row["red"].get<int>())
+			);	
+	});
 
-			if (xBeatData.size() > 1) {
-				auto lastMs = xBeatData.at(xBeatData.size() - 2);
-				auto currMs = xBeatData.back();
-				heartRateVec.push_back(HeartRate{
-					lastMs, currMs, 60000.0 / (currMs - lastMs)
-				});
+	auto it = previousLastMs == -1 ? 
+		sensorDataSet.begin() : sensorDataSet.find(SensorData(previousLastMs));
+	for (; it != sensorDataSet.end(); ++it) {
+		auto sd = *it;
+		if (beatDetector.addSample(sd.getMs(), sd.getRedLed())) {
+			if (!beatSet.empty()) {
+				heartRateSet.insert(HeartRate(
+					(*beatSet.rbegin()),	// begin
+					sd.getMs()				// end
+				));
 			}
+			beatSet.insert(sd.getMs());
 		}
 	}
-	
 	emit receivedNewData();
 }
 
-std::pair<double, double> Data::minMaxInOneSerie(const QVector<qint64>& x, const QVector<double>& y, double range) {
-	std::pair<double, double> minMax(0, 5);
-	if (!x.isEmpty()) {
-		qint64 beg = x.back() - FromCustomPlotMs()(range);
-		auto it = std::find_if(x.begin(), x.end(),
-			[beg](qint64 t)->bool {
-			return t > beg;
-		});
-		auto mainBegId = std::distance(x.begin(), it);
-		auto tmp = std::minmax_element(y.begin() + mainBegId, y.end());
-		minMax = std::pair<double, double>(*tmp.first, *tmp.second);
-	}
-	return minMax;
+QVector<double> Data::getSensorData(double dataLaterThan, const std::function<double(const SensorData&)> & fMap) {
+	auto begin = getRangeBegin(dataLaterThan);
+	auto size = std::distance(begin, sensorDataSet.end());
+	QVector<double> data(size);
+	std::transform(begin, sensorDataSet.end(), data.begin(), fMap);
+	return data;
 }
 
+std::set<SensorData>::iterator Data::getRangeBegin(double laterThanCustomPlotMs) {
+	return getRangeBegin(customPlotMsToMs(laterThanCustomPlotMs));
+}
+
+std::set<SensorData>::iterator Data::getRangeBegin(qint64 laterThanMs) {
+	return std::find_if(sensorDataSet.begin(), sensorDataSet.end(),
+		[laterThanMs](const SensorData & data)->bool {
+			return data.getMs() > laterThanMs;
+	});
+}
+
+std::pair<double, double> Data::sensorDataMinMax(
+	const std::set<SensorData>::iterator & begin,
+	const std::set<SensorData>::iterator & end)
+{
+	if (std::distance(begin, end) == 0 || (!irDataEnabled && !redDataEnabled))
+		return std::pair<double, double>(0, 1);
+
+	std::set<int> tmp;
+	if (irDataEnabled) {
+		std::transform(begin, end, std::inserter(tmp, tmp.begin()),
+			[](const SensorData & data)->int {
+			return data.getIrLed();
+		});
+	}
+	if (redDataEnabled) {
+		std::transform(begin, end, std::inserter(tmp, tmp.begin()),
+			[](const SensorData & data)->int {
+			return data.getRedLed();
+		});
+	}
+	return std::pair<double, double>(*tmp.begin(), *tmp.rbegin());
+}
+
+double Data::msToCustomPlotMs(qint64 ms) {
+	return ms / 1000.0;
+}
+
+qint64 Data::customPlotMsToMs(double cMs) {
+	return cMs * 1000 + 0.5;
+}

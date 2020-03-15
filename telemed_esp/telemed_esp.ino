@@ -6,8 +6,8 @@
 #include <Wire.h>
 
 #define SAMPLING_RATE		MAX30100_SAMPRATE_100HZ
-#define IR_LED_CURRENT      MAX30100_LED_CURR_50MA
-#define RED_LED_CURRENT     MAX30100_LED_CURR_27_1MA
+#define IR_LED_CURRENT      MAX30100_LED_CURR_0MA
+#define RED_LED_CURRENT     MAX30100_LED_CURR_0MA
 #define PULSE_WIDTH         MAX30100_SPC_PW_1600US_16BITS
 #define HIGHRES_MODE        true
 #define INT_PIN				2
@@ -61,27 +61,27 @@ void dataRequest(AsyncWebServerRequest * request) {
 		if(i != (BUFF_SIZE-1)) str += ",";
 	}
 	str += "]";
-	Serial.println(buffMs[buffCurrId]);
+	//Serial.println(buffMs[buffCurrId]);
 	request->send(200, "application/json", str.c_str());
 }
 
 void setup(){
 	Serial.begin(115200);
   
-	Serial.println("Setting AP (Access Point)…");
+	//Serial.println("Setting AP (Access Point)…");
   
-	WiFi.softAP(ssid, password);
-
-	//begin("Kala", "0987654321a123");
+	//WiFi.softAP(ssid, password);
+	WiFi.hostname("HRSensor");
+	while(!WiFi.begin("Kala", "0987654321a123"));
 
 	//IPAddress IP = WiFi.softAPIP();
-	Serial.print("AP IP address: ");
+	//Serial.print("AP IP address: ");
 	//Serial.println(IP);
-	Serial.println(WiFi.localIP());
+	//Serial.println(WiFi.localIP());
 
 	sensor.begin();
 	sensor.setMode(MAX30100_MODE_SPO2_HR);
-	sensor.setLedsCurrent(IR_LED_CURRENT, RED_LED_CURRENT);
+	sensor.setLedsCurrent(irLedCurrent, redLedCurrent);
 	sensor.setLedsPulseWidth(PULSE_WIDTH);
 	sensor.setSamplingRate(SAMPLING_RATE);
 	sensor.setHighresModeEnabled(HIGHRES_MODE);

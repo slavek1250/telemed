@@ -109,7 +109,9 @@
     <QtMoc Include="Data.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="HeartRate.h" />
     <ClInclude Include="ObjectFactory.h" />
+    <ClInclude Include="SensorData.h" />
     <QtMoc Include="DeviceApi.h" />
     <ClInclude Include="MAX30100_BeatDetector.h" />
   </ItemGroup>
