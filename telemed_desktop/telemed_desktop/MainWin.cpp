@@ -83,7 +83,7 @@ void MainWin::setupPlot() {
 	plot->legend->setVisible(true);
 	plot->legend->setBrush(QColor(255, 255, 255, 150));
 	QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
-	dateTicker->setDateTimeFormat("mm:ss.zzz");
+	dateTicker->setDateTimeFormat("hh:mm:ss.zzz");
 	plot->xAxis->setTicker(dateTicker);
 }
 

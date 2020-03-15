@@ -20,11 +20,16 @@ Data::Data(QObject *parent)
 	connect(timer, &QTimer::timeout, this, &Data::timerTimeout);
 	timer->setInterval(TIMER_INTERVAL);
 
-	filter.setup(
+	irFilter.setup(
 		SAMPLING_RATE,
 		(LOW_CUT_FREQ + HIGH_CUT_FREQ) / 2,
 		(HIGH_CUT_FREQ - LOW_CUT_FREQ)
 	);	
+	redFilter.setup(
+		SAMPLING_RATE,
+		(LOW_CUT_FREQ + HIGH_CUT_FREQ) / 2,
+		(HIGH_CUT_FREQ - LOW_CUT_FREQ)
+	);
 }
 
 void Data::timerTimeout() {
@@ -158,8 +163,8 @@ void Data::processNewData(const QString & data_) {
 		[this](const nlohmann::json::value_type & row)->SensorData {
 			return SensorData(
 				(row["ms"].get<unsigned long long>() + this->begMs),
-				row["ir"].get<int>(),
-				this->filter.filter(row["red"].get<int>())
+				irFilter.filter(row["ir"].get<int>()),
+				redFilter.filter(row["red"].get<int>())
 			);	
 	});
 
@@ -167,7 +172,7 @@ void Data::processNewData(const QString & data_) {
 		sensorDataSet.begin() : sensorDataSet.find(SensorData(previousLastMs));
 	for (; it != sensorDataSet.end(); ++it) {
 		auto sd = *it;
-		if (beatDetector.addSample(sd.getMs(), sd.getRedLed())) {
+		if (beatDetector.addSample(sd.getMs(), sd.getIrLed())) {
 			if (!beatSet.empty()) {
 				heartRateSet.insert(HeartRate(
 					(*beatSet.rbegin()),	// begin

@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <set>
+#include <functional>
 #include <iir/Butterworth.h>
 #include "MAX30100_BeatDetector.h"
 #include "HeartRate.h"
@@ -24,7 +25,8 @@ private:
 
 	QTimer * timer;
 
-	Iir::Butterworth::BandPass<FILTER_ORDER> filter;
+	Iir::Butterworth::BandPass<FILTER_ORDER> redFilter;
+	Iir::Butterworth::BandPass<FILTER_ORDER> irFilter;
 	BeatDetector beatDetector;
 
 	const QString IR_DATA_NAME = "IR led";
