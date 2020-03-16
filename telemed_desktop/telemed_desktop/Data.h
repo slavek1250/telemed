@@ -51,6 +51,7 @@ private:
 		const std::set<SensorData>::iterator & end);
 	static double msToCustomPlotMs(qint64 ms);
 	static qint64 customPlotMsToMs(double cMs);
+	static std::string timestampStringFromMsSinceEpoch(qint64 ms);
 
 public:
 	Data(QObject *parent);

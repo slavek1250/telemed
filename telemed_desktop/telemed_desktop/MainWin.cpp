@@ -109,7 +109,7 @@ void MainWin::setGraphVisible(Graph graph, bool visible) {
 void MainWin::saveToFile() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save as"),
 		QStandardPaths::writableLocation(QStandardPaths::DesktopLocation),
-		tr("Comma separated file (*.csv)"));
+		tr("Excel file (*.xlsx)"));
 	data->saveAs(fileName);
 	titleSaved();
 }
@@ -155,7 +155,6 @@ void MainWin::receivedNewData() {
 	
 	auto hrs = data->getHeartRate(lastHRMs);
 	for (auto hr : hrs) {
-		//ui.HRTab->
 		QTableWidgetItem * begIt = new QTableWidgetItem(
 			hr.getBeginTimeStr());
 		QTableWidgetItem * endIt = new QTableWidgetItem(
@@ -167,13 +166,11 @@ void MainWin::receivedNewData() {
 		ui.HRTab->setItem(row, 0, begIt);
 		ui.HRTab->setItem(row, 1, endIt);
 		ui.HRTab->setItem(row, 2, hrIt);
-
 	}
 	if (!hrs.isEmpty()) {
 		ui.HRLbl->setText(QString::number(hrs.back().getHR()));
 		lastHRMs = hrs.back().getBeginMs();
 	}
-
 	QScrollBar *sb = ui.HRTab->verticalScrollBar();
 	sb->setValue(sb->maximum());
 }

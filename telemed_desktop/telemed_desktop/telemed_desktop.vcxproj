@@ -59,14 +59,15 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Source\libs\OpenXLSX-master\include;F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>F:\Source\libs\iir\lib;F:\Source\libs\QCustomPlot\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>QCustomPlotd.lib;iir_staticd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:\Source\libs\OpenXLSX-master\lib;F:\Source\libs\iir\lib;F:\Source\libs\QCustomPlot\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>QCustomPlotd.lib;iir_staticd.lib;%(AdditionalDependencies);OpenXLSXd.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -75,14 +76,15 @@
       <DebugInformationFormat />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Source\libs\OpenXLSX-master\include;F:\Source\libs\QCustomPlot\include;F:\Source\libs\iir\include;F:\Source\libs\json\include;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>F:\Source\libs\iir\lib;F:\Source\libs\QCustomPlot\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>QCustomPlot.lib;iir_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:\Source\libs\OpenXLSX-master\lib;F:\Source\libs\iir\lib;F:\Source\libs\QCustomPlot\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>QCustomPlot.lib;iir_static.lib;%(AdditionalDependencies);OpenXLSX.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

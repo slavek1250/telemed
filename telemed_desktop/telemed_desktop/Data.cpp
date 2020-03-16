@@ -1,6 +1,7 @@
 #include "Data.h"
 
 #include <nlohmann/json.h>
+#include <OpenXLSX/OpenXLSX.h>
 #include <QDateTime>
 #include <QTimer>
 #include <QFile>
@@ -8,7 +9,6 @@
 #include <iir/Butterworth.h>
 #include "ObjectFactory.h"
 #include "DeviceApi.h"
-
 
 Data::Data(QObject *parent)
 	: QObject(parent)
@@ -55,19 +55,55 @@ void Data::clear() {
 }
 
 void Data::saveAs(const QString & filepath) {
-	QFile file(filepath);
+	using namespace OpenXLSX;
+	XLDocument doc;
 
-	if (file.open(QIODevice::WriteOnly)) {
-		QTextStream ts(&file);
-		ts << "Time [ms];" << IR_DATA_NAME << RED_DATA_NAME;
-		for(auto & sd : sensorDataSet) {
-			ts << "\n"
-				<< (sd.getMs() - (*sensorDataSet.begin()).getMs()) << ";"
-				<< sd.getIrLed() << ";" << sd.getRedLed();
-		}
-		dataSaved = true;
+	doc.CreateDocument(filepath.toStdString());
+	doc.Workbook().AddWorksheet("Raw data");
+	auto wks = doc.Workbook().Worksheet("Raw data");
+	wks.Cell("A1").Value() = "Timestamp";
+	wks.Cell("B1").Value() = "Millis since begin";
+	wks.Cell("C1").Value() = "IR led";
+	wks.Cell("D1").Value() = "Red led";
+	int row = 2;
+	qint64 beginMs = (*sensorDataSet.begin()).getMs();
+	for (auto & sd : sensorDataSet) {
+		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(sd.getMs());
+		wks.Cell(row, 2).Value() = sd.getMs() - beginMs;
+		wks.Cell(row, 3).Value() = sd.getIrLed();
+		wks.Cell(row++, 4).Value() = sd.getRedLed();
 	}
-	file.close();
+
+	doc.Workbook().AddWorksheet("Beats");
+	wks = doc.Workbook().Worksheet("Beats");
+	wks.Cell("A1").Value() = "Timestamp";
+	wks.Cell("B1").Value() = "Millis since begin";
+	row = 2;
+	beginMs = *beatSet.begin();
+	for (auto & beat : beatSet) {
+		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(beat);
+		wks.Cell(row++, 2).Value() = beat - beginMs;
+	}
+
+	doc.Workbook().AddWorksheet("Heart rate");
+	wks = doc.Workbook().Worksheet("Heart rate");
+	wks.Cell("A1").Value() = "Begin time";
+	wks.Cell("B1").Value() = "End time";
+	wks.Cell("C1").Value() = "Begin millis";
+	wks.Cell("D1").Value() = "End millis";
+	wks.Cell("E1").Value() = "Heart Rate [bpm]";
+	row = 2;
+	beginMs = (*heartRateSet.begin()).getBeginMs();
+	for (auto & hr : heartRateSet) {
+		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(hr.getBeginMs());
+		wks.Cell(row, 2).Value() = timestampStringFromMsSinceEpoch(hr.getEndMs());
+		wks.Cell(row, 3).Value() = hr.getBeginMs() - beginMs;
+		wks.Cell(row, 4).Value() = hr.getEndMs() - beginMs;
+		wks.Cell(row++, 5).Value() = hr.getHR();
+	}
+	doc.Workbook().DeleteSheet("Sheet1");
+	doc.SaveDocument();
+	dataSaved = true;
 }
 
 void Data::setIrLedEnabled(bool enabled) {
@@ -233,4 +269,10 @@ double Data::msToCustomPlotMs(qint64 ms) {
 
 qint64 Data::customPlotMsToMs(double cMs) {
 	return cMs * 1000 + 0.5;
+}
+
+std::string Data::timestampStringFromMsSinceEpoch(qint64 ms) {
+	return QDateTime::fromMSecsSinceEpoch(ms)
+		.toString("yyyy-MM-dd hh:mm:ss.zzz")
+		.toStdString();
 }
