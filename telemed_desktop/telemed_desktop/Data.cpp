@@ -180,6 +180,35 @@ QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
 	return hr;
 }
 
+QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanForN) {
+	QVector<HeartRate> hrVec(heartRateSet.size());
+	int n = 0,
+		i = 0;
+	double sum = 0.0;
+	for (auto & hr : heartRateSet) {
+		sum += hr.getHR();
+		if (n != meanForN)
+			++n;
+		else {
+			sum -= hrVec.at(i - meanForN).getHR();
+		}
+		hrVec[i] = HeartRate{
+			hr.getBeginMs(), 
+			hr.getEndMs(), 
+			sum / n
+		};
+		++i;
+	}
+	if (laterThan != -1) {
+		auto newEnd = std::remove_if(hrVec.begin(), hrVec.end(), 
+			[laterThan](const HeartRate & hr)->bool {
+				return hr.getBeginMs() <= laterThan;
+		});
+		hrVec.erase(newEnd, hrVec.end());
+	}
+	return hrVec;
+}
+
 void Data::processNewData(const QString & data_) {
 	nlohmann::json data = nlohmann::json::parse(data_.toStdString());
 
@@ -207,6 +236,7 @@ void Data::processNewData(const QString & data_) {
 	auto it = previousLastMs == -1 ? 
 		sensorDataSet.begin() : sensorDataSet.find(SensorData(previousLastMs));
 	for (; it != sensorDataSet.end(); ++it) {
+		//if (++it == sensorDataSet.end()) break;
 		auto sd = *it;
 		if (beatDetector.addSample(sd.getMs(), sd.getIrLed())) {
 			if (!beatSet.empty()) {

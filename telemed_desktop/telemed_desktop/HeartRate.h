@@ -7,6 +7,9 @@ class HeartRate {
 	qint64 end = 0;
 	double hr = 0.0;
 public:
+	HeartRate(qint64 begin_, qint64 end_, double hr_) :
+		begin(begin_), end(end_), hr(hr_) 
+	{}
 	HeartRate(qint64 begin_, qint64 end_) :
 		begin(begin_), end(end_) {
 		hr = (60000.0 / (end_ - begin_));

@@ -78,6 +78,7 @@ public:
 	QVector<double> getYBeatData(int rangeSizeInSeconds);
 
 	QVector<HeartRate> getHeartRate(qint64 laterThan = -1);
+	QVector<HeartRate> getMeanHeartRate(qint64 laterThan = -1, unsigned int meanForN = 10);
 
 	bool isDataSaved() { return dataSaved; };
 
