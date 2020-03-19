@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <set>
+#include <vector>
 #include <functional>
 #include <iir/Butterworth.h>
 #include "MAX30100_BeatDetector.h"
@@ -37,7 +38,7 @@ private:
 
 	std::set<SensorData> sensorDataSet;
 	std::set<qint64> beatSet;
-	std::set<HeartRate> heartRateSet;
+	std::vector<HeartRate> heartRateVec;
 
 	qint64 begMs = 0;
 
@@ -49,6 +50,18 @@ private:
 	std::pair<double, double> sensorDataMinMax(
 		const std::set<SensorData>::iterator & begin,
 		const std::set<SensorData>::iterator & end);
+	std::vector<HeartRate>::iterator getHeartRateBegin(qint64 laterThanMs);
+	template<class T>
+	double quantileMean(
+		const typename std::vector<T>::iterator & begin,
+		const typename std::vector<T>::iterator & end
+	);
+	template<class T, class Functor>
+	double quantileMean(
+		const typename std::vector<T>::iterator & begin,
+		const typename std::vector<T>::iterator & end,
+		const Functor & mapF
+	);
 	static double msToCustomPlotMs(qint64 ms);
 	static qint64 customPlotMsToMs(double cMs);
 	static std::string timestampStringFromMsSinceEpoch(qint64 ms);
@@ -79,6 +92,7 @@ public:
 
 	QVector<HeartRate> getHeartRate(qint64 laterThan = -1);
 	QVector<HeartRate> getMeanHeartRate(qint64 laterThan = -1, unsigned int meanForN = 10);
+	QVector<HeartRate> getQuantileMeanHeartRate(qint64 laterThan = -1, unsigned int quantileForN = 10);
 
 	bool isDataSaved() { return dataSaved; };
 
@@ -89,3 +103,26 @@ private slots:
 signals:
 	void receivedNewData();
 };
+
+template<class T> inline double Data::quantileMean(
+	const typename std::vector<T>::iterator & begin, 
+	const typename std::vector<T>::iterator & end) 
+{
+	return quantileMean(begin, end, [](const T & v)->double { return double(v); });
+}
+
+template<class T, class Functor> inline double Data::quantileMean(
+	const typename std::vector<T>::iterator & begin,
+	const typename std::vector<T>::iterator & end,
+	const Functor & mapF)
+{
+	std::vector<double> vals(std::distance(begin, end));
+	std::transform(begin, end, vals.begin(), mapF);
+	std::sort(vals.begin(), vals.end());
+	int beginIndex = vals.size() * 0.3;
+	int endIndex = vals.size() - beginIndex;
+	double sum = std::accumulate(
+		vals.begin() + beginIndex,
+		vals.begin() + endIndex, 0.0);
+	return sum / (endIndex - beginIndex);
+}

@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <iir/Butterworth.h>
+#include <iterator>
 #include "ObjectFactory.h"
 #include "DeviceApi.h"
 
@@ -49,7 +50,7 @@ void Data::stop() {
 void Data::clear() {
 	sensorDataSet.clear();
 	beatSet.clear();
-	heartRateSet.clear();
+	heartRateVec.clear();
 	begMs = 0;
 	dataSaved = true;
 }
@@ -93,8 +94,8 @@ void Data::saveAs(const QString & filepath) {
 	wks.Cell("D1").Value() = "End millis";
 	wks.Cell("E1").Value() = "Heart Rate [bpm]";
 	row = 2;
-	beginMs = (*heartRateSet.begin()).getBeginMs();
-	for (auto & hr : heartRateSet) {
+	beginMs = (*heartRateVec.begin()).getBeginMs();
+	for (auto & hr : heartRateVec) {
 		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(hr.getBeginMs());
 		wks.Cell(row, 2).Value() = timestampStringFromMsSinceEpoch(hr.getEndMs());
 		wks.Cell(row, 3).Value() = hr.getBeginMs() - beginMs;
@@ -171,33 +172,27 @@ QVector<double> Data::getYBeatData(int rangeSizeInSeconds) {
 }
 
 QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
-	auto begin = std::find_if(heartRateSet.begin(), heartRateSet.end(), 
-		[laterThan](const HeartRate & hr)->bool {
-			return hr.getBeginMs() > laterThan;
-	});
-	QVector<HeartRate> hr(std::distance(begin, heartRateSet.end()));
-	std::copy(begin, heartRateSet.end(), hr.begin());
+	auto begin = getHeartRateBegin(laterThan);
+	QVector<HeartRate> hr(std::distance(begin, heartRateVec.end()));
+	std::copy(begin, heartRateVec.end(), hr.begin());
 	return hr;
 }
 
 QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanForN) {
-	QVector<HeartRate> hrVec(heartRateSet.size());
-	int n = 0,
-		i = 0;
+	QVector<HeartRate> hrVec(heartRateVec.size());
 	double sum = 0.0;
-	for (auto & hr : heartRateSet) {
-		sum += hr.getHR();
+	for (int i = 0, n = 0; i < heartRateVec.size(); ++i) {
+		sum += heartRateVec.at(i).getHR();
 		if (n != meanForN)
 			++n;
 		else {
-			sum -= hrVec.at(i - meanForN).getHR();
+			sum -= heartRateVec.at(i - meanForN).getHR();
 		}
 		hrVec[i] = HeartRate{
-			hr.getBeginMs(), 
-			hr.getEndMs(), 
+			heartRateVec.at(i).getBeginMs(),
+			heartRateVec.at(i).getEndMs(),
 			sum / n
 		};
-		++i;
 	}
 	if (laterThan != -1) {
 		auto newEnd = std::remove_if(hrVec.begin(), hrVec.end(), 
@@ -207,6 +202,30 @@ QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanFor
 		hrVec.erase(newEnd, hrVec.end());
 	}
 	return hrVec;
+}
+
+QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan, unsigned int quantileForN) {
+
+	auto begin = getHeartRateBegin(laterThan);
+	auto beginIndex = std::distance(heartRateVec.begin(), begin);
+	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
+
+	for (int i = beginIndex; i < heartRateVec.size(); ++i) {
+		auto quantileBegin = heartRateVec.begin();
+		if ((i - (int)quantileForN + 1) >= 0)
+			std::advance(quantileBegin, i - quantileForN + 1);
+		auto quantileEnd = heartRateVec.begin();
+		std::advance(quantileEnd, i + 1);
+
+		out[i - beginIndex] = HeartRate{
+			heartRateVec.at(i).getBeginMs(),
+			heartRateVec.at(i).getEndMs(),
+			quantileMean<HeartRate>(quantileBegin, quantileEnd,
+				[](const HeartRate & v)->double { return v.getHR(); }
+			)
+		};
+	}
+	return out;
 }
 
 void Data::processNewData(const QString & data_) {
@@ -240,7 +259,7 @@ void Data::processNewData(const QString & data_) {
 		auto sd = *it;
 		if (beatDetector.addSample(sd.getMs(), sd.getIrLed())) {
 			if (!beatSet.empty()) {
-				heartRateSet.insert(HeartRate(
+				heartRateVec.push_back(HeartRate(
 					(*beatSet.rbegin()),	// begin
 					sd.getMs()				// end
 				));
@@ -291,6 +310,13 @@ std::pair<double, double> Data::sensorDataMinMax(
 		});
 	}
 	return std::pair<double, double>(*tmp.begin(), *tmp.rbegin());
+}
+
+std::vector<HeartRate>::iterator Data::getHeartRateBegin(qint64 laterThanMs) {
+	return std::find_if(heartRateVec.begin(), heartRateVec.end(),
+		[laterThanMs](const HeartRate & hr)->bool {
+		return hr.getBeginMs() > laterThanMs;
+	});
 }
 
 double Data::msToCustomPlotMs(qint64 ms) {
