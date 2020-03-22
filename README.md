@@ -34,22 +34,22 @@ Osoba 1
 Ostatecznie zastosowano eliminację wartości maksynalnej i minimalnej w zbiorze 7 ostatnich
 wartości. 
 Osoba 1
-![Osoba 1](measures/method3/personA.png)
+![Osoba 1](measures/method3/personA.jpg)
 
 Osoba 2
-![Osoba 1](measures/method3/personB.png)
+![Osoba 1](measures/method3/personB.jpg)
 
 Osoba 3
-![Osoba 1](measures/method3/personC.png)
+![Osoba 1](measures/method3/personC.jpg)
 
 Osoba 4
-![Osoba 1](measures/method3/personD.png)
+![Osoba 1](measures/method3/personD.jpg)
 
 Osoba 5
-![Osoba 1](measures/method3/personE.png)
+![Osoba 1](measures/method3/personE.jpg)
 
 Osoba 6
-![Osoba 1](measures/method3/personF.png)
+![Osoba 1](measures/method3/personF.jpg)
 
 
 [nlohmann/json]: <https://github.com/nlohmann/json>
