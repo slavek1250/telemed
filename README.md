@@ -33,6 +33,7 @@ Osoba 1
 ### Puls jako średnia 5 spośród 7 wartości
 Ostatecznie zastosowano eliminację wartości maksynalnej i minimalnej w zbiorze 7 ostatnich
 wartości. 
+
 Osoba 1
 ![Osoba 1](measures/method3/personA.jpg)
 
