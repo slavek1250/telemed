@@ -153,7 +153,7 @@ void MainWin::receivedNewData() {
 	lastCustomPlotMsMainData = data->getLastSensorDataCustomPlotMs();
 	updateRange();
 	
-	auto hrs = data->getQuantileMeanHeartRate(lastHRMs);
+	auto hrs = data->getQuantileMeanHeartRate(lastHRMs, 7);
 	for (auto hr : hrs) {
 		QTableWidgetItem * begIt = new QTableWidgetItem(
 			hr.getBeginTimeStr());

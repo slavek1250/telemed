@@ -119,7 +119,7 @@ template<class T, class Functor> inline double Data::quantileMean(
 	std::vector<double> vals(std::distance(begin, end));
 	std::transform(begin, end, vals.begin(), mapF);
 	std::sort(vals.begin(), vals.end());
-	int beginIndex = vals.size() * 0.3;
+	int beginIndex = vals.size() != 1 ? 1 : 0;// / ++vals.size();
 	int endIndex = vals.size() - beginIndex;
 	double sum = std::accumulate(
 		vals.begin() + beginIndex,

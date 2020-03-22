@@ -205,7 +205,6 @@ QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanFor
 }
 
 QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan, unsigned int quantileForN) {
-
 	auto begin = getHeartRateBegin(laterThan);
 	auto beginIndex = std::distance(heartRateVec.begin(), begin);
 	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
