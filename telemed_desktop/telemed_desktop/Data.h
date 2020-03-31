@@ -33,12 +33,16 @@ private:
 	const QString IR_DATA_NAME = "IR led";
 	const QString RED_DATA_NAME = "Red led";
 	const QString BEAT_DATA_NAME = "Beat";
+	const QString HEART_DATA_NAME = "Heart Rate";
 	bool irDataEnabled = true;
 	bool redDataEnabled = true;
+	bool hrDataEnabled = true;
 
 	std::set<SensorData> sensorDataSet;
 	std::set<qint64> beatSet;
+	std::vector<HeartRate> heartRateVecRaw;
 	std::vector<HeartRate> heartRateVec;
+	unsigned int quantileMeanN = 10;
 
 	qint64 begMs = 0;
 
@@ -51,6 +55,10 @@ private:
 		const std::set<SensorData>::iterator & begin,
 		const std::set<SensorData>::iterator & end);
 	std::vector<HeartRate>::iterator getHeartRateBegin(qint64 laterThanMs);
+	std::pair<double, double> heartRateMinMax(
+		const std::vector<HeartRate>::iterator & begin,
+		const std::vector<HeartRate>::iterator & end
+	);
 	template<class T>
 	double quantileMean(
 		const typename std::vector<T>::iterator & begin,
@@ -77,6 +85,7 @@ public:
 
 	void setIrLedEnabled(bool enabled);
 	void setRedLedEnabled(bool enabled);
+	void setHearRateEnabled(bool enabled);
 
 	QString getYIrSensorDataName() const;
 	QString getYRedSensorDataName() const;
@@ -84,21 +93,26 @@ public:
 	QVector<double> getYIrSensorData(double dataLaterThan = -1.0);
 	QVector<double> getYRedSensorData(double dataLaterThan = -1.0);
 	double getLastSensorDataCustomPlotMs();
-	std::pair<double, double> getSensorDataMinMax(int rangeSizeInSeconds);
+	std::pair<double, double> getDataMinMax(int rangeSizeInSeconds);
 
 	QString getBeatDataName() const;
 	QVector<double> getXBeatData();
 	QVector<double> getYBeatData(int rangeSizeInSeconds);
 
+	void setHeartRateQuantileN(unsigned int n);
+	QString getHeartRateDataName() const;
 	QVector<HeartRate> getHeartRate(qint64 laterThan = -1);
-	QVector<HeartRate> getMeanHeartRate(qint64 laterThan = -1, unsigned int meanForN = 10);
+	//QVector<HeartRate> getMeanHeartRate(qint64 laterThan = -1, unsigned int meanForN = 10);
 	QVector<HeartRate> getQuantileMeanHeartRate(qint64 laterThan = -1, unsigned int quantileForN = 10);
+	QVector<double> getXHRData() const;
+	QVector<double> getYHRData() const;
 
 	bool isDataSaved() { return dataSaved; };
 
 private slots:
 	void timerTimeout();
 	void processNewData(const QString & data_);
+	void detectHeartRate(std::set<SensorData>::iterator begin);
 
 signals:
 	void receivedNewData();
@@ -119,7 +133,7 @@ template<class T, class Functor> inline double Data::quantileMean(
 	std::vector<double> vals(std::distance(begin, end));
 	std::transform(begin, end, vals.begin(), mapF);
 	std::sort(vals.begin(), vals.end());
-	int beginIndex = vals.size() != 1 ? 1 : 0;// / ++vals.size();
+	int beginIndex = vals.size() * 0.3; //> 3 ? 1 : 0;
 	int endIndex = vals.size() - beginIndex;
 	double sum = std::accumulate(
 		vals.begin() + beginIndex,

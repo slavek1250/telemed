@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QFile>
 #include <QTextStream>
+#include <QDebug>
 #include <iir/Butterworth.h>
 #include <iterator>
 #include "ObjectFactory.h"
@@ -115,6 +116,10 @@ void Data::setRedLedEnabled(bool enabled) {
 	redDataEnabled = enabled;
 }
 
+void Data::setHearRateEnabled(bool enabled) {
+	hrDataEnabled = enabled;
+}
+
 QString Data::getYIrSensorDataName() const {
 	return IR_DATA_NAME;
 }
@@ -145,12 +150,26 @@ double Data::getLastSensorDataCustomPlotMs() {
 	return (*sensorDataSet.rbegin()).toCustomPlotMs();
 }
 
-std::pair<double, double> Data::getSensorDataMinMax(int rangeSizeInSeconds) {
-	if (sensorDataSet.empty()) return std::pair<double, double>(0, 1);
+std::pair<double, double> Data::getDataMinMax(int rangeSizeInSeconds) {
+	if (sensorDataSet.empty()) 
+		return std::pair<double, double>(0, 1);
+
 	auto begin = getRangeBegin((*sensorDataSet.rbegin()).getMs() - rangeSizeInSeconds * 1000);
 	if (begin == sensorDataSet.end())
 		begin = sensorDataSet.begin();
-	return sensorDataMinMax(begin, sensorDataSet.end());
+	auto sensorMinMax = sensorDataMinMax(begin, sensorDataSet.end());
+	if (hrDataEnabled == false || heartRateVec.empty()) 
+		return sensorMinMax;
+	
+	auto hrBegin = getHeartRateBegin(heartRateVec.back().getEndMs() - rangeSizeInSeconds * 1000);
+	if (hrBegin == heartRateVec.end())
+		hrBegin = heartRateVec.begin();
+	auto hrMinMax = heartRateMinMax(hrBegin, heartRateVec.end());
+
+	return std::pair<double, double>(
+		std::min(sensorMinMax.first, hrMinMax.first),
+		std::max(sensorMinMax.second, hrMinMax.second)
+	);
 }
 
 QString Data::getBeatDataName() const {
@@ -171,13 +190,21 @@ QVector<double> Data::getYBeatData(int rangeSizeInSeconds) {
 	return QVector<double>(beatSet.size(), max);
 }
 
+void Data::setHeartRateQuantileN(unsigned int n) {
+	quantileMeanN = n;
+}
+
+QString Data::getHeartRateDataName() const {
+	return HEART_DATA_NAME;
+}
+
 QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
 	auto begin = getHeartRateBegin(laterThan);
 	QVector<HeartRate> hr(std::distance(begin, heartRateVec.end()));
 	std::copy(begin, heartRateVec.end(), hr.begin());
 	return hr;
 }
-
+/*
 QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanForN) {
 	QVector<HeartRate> hrVec(heartRateVec.size());
 	double sum = 0.0;
@@ -203,8 +230,14 @@ QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanFor
 	}
 	return hrVec;
 }
-
+*/
 QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan, unsigned int quantileForN) {
+	auto begin = getHeartRateBegin(laterThan);
+	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
+	std::copy(begin, heartRateVec.end(), out.begin());
+	return out;
+
+	/*
 	auto begin = getHeartRateBegin(laterThan);
 	auto beginIndex = std::distance(heartRateVec.begin(), begin);
 	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
@@ -225,11 +258,37 @@ QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan, unsigned int
 		};
 	}
 	return out;
+	*/
 }
 
-void Data::processNewData(const QString & data_) {
-	nlohmann::json data = nlohmann::json::parse(data_.toStdString());
+QVector<double> Data::getXHRData() const {
+	QVector<double> x(heartRateVec.size());
+	std::transform(heartRateVec.begin(), heartRateVec.end(), x.begin(), 
+		[](const HeartRate & hr)->double {
+			return msToCustomPlotMs(hr.getEndMs());
+	});
+	return x;
+}
 
+QVector<double> Data::getYHRData() const {
+	QVector<double> y(heartRateVec.size());
+	std::transform(heartRateVec.begin(), heartRateVec.end(), y.begin(),
+		[](const HeartRate & hr)->double {
+		return hr.getHR();
+	});
+	return y;
+}
+
+
+void Data::processNewData(const QString & data_) {
+	nlohmann::json data;
+	try {
+		data = nlohmann::json::parse(data_.toStdString());
+	}
+	catch (const std::exception & ex) {
+		qDebug() << ex.what();
+		return;
+	}
 	// set begin time of measures
 	if (begMs == 0) {
 		auto max = std::max_element(data.begin(), data.end(), 
@@ -253,12 +312,20 @@ void Data::processNewData(const QString & data_) {
 
 	auto it = previousLastMs == -1 ? 
 		sensorDataSet.begin() : sensorDataSet.find(SensorData(previousLastMs));
+	detectHeartRate(it);
+
+	emit receivedNewData();
+}
+
+void Data::detectHeartRate(std::set<SensorData>::iterator begin) {
+	auto it = begin;
+	auto lastHrInVec = heartRateVecRaw.size() ? heartRateVecRaw.size() - 1 : 0;
+
 	for (; it != sensorDataSet.end(); ++it) {
-		//if (++it == sensorDataSet.end()) break;
 		auto sd = *it;
-		if (beatDetector.addSample(sd.getMs(), sd.getIrLed())) {
+		if (beatDetector.addSample(sd.getMs(), sd.getIrLed() * -1)) {
 			if (!beatSet.empty()) {
-				heartRateVec.push_back(HeartRate(
+				heartRateVecRaw.push_back(HeartRate(
 					(*beatSet.rbegin()),	// begin
 					sd.getMs()				// end
 				));
@@ -266,7 +333,23 @@ void Data::processNewData(const QString & data_) {
 			beatSet.insert(sd.getMs());
 		}
 	}
-	emit receivedNewData();
+
+	// Compute quantile mean
+	for (int i = lastHrInVec + 1; i < heartRateVecRaw.size(); ++i) {
+		auto quantileBegin = heartRateVecRaw.begin();
+		if((i - (int)quantileMeanN + 1) >= 0)
+			std::advance(quantileBegin, i - quantileMeanN + 1);
+		auto quantileEnd = heartRateVecRaw.begin();
+		std::advance(quantileEnd, i + 1);
+
+		heartRateVec.emplace_back(
+			heartRateVecRaw.at(i).getBeginMs(),
+			heartRateVecRaw.at(i).getEndMs(),
+			quantileMean<HeartRate>(quantileBegin, quantileEnd,
+				[](const HeartRate & v)->double { return v.getHR(); }
+			)
+		);
+	}
 }
 
 QVector<double> Data::getSensorData(double dataLaterThan, const std::function<double(const SensorData&)> & fMap) {
@@ -316,6 +399,20 @@ std::vector<HeartRate>::iterator Data::getHeartRateBegin(qint64 laterThanMs) {
 		[laterThanMs](const HeartRate & hr)->bool {
 		return hr.getBeginMs() > laterThanMs;
 	});
+}
+
+std::pair<double, double> Data::heartRateMinMax(
+	const std::vector<HeartRate>::iterator & begin, 
+	const std::vector<HeartRate>::iterator & end
+) {
+	auto minMax = std::minmax_element(begin, end, 
+		[](const HeartRate & l, const HeartRate & r)->bool {
+			return l.getHR() < r.getHR();
+	});
+	return std::pair<double, double>(
+			(*(minMax.first)).getHR(),
+			(*(minMax.second)).getHR()
+		);
 }
 
 double Data::msToCustomPlotMs(qint64 ms) {

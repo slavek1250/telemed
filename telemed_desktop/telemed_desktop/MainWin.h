@@ -17,7 +17,8 @@ private:
 	enum Graph {
 		IR,
 		RED,
-		BEAT
+		BEAT,
+		HR
 	};
 
 	Ui::MainWinClass ui;
@@ -43,5 +44,6 @@ private slots:
 	void setRedLedGraphVisible(bool visible);
 	void setIrLedGraphVisible(bool visible);
 	void setBeatGraphVisible(bool visible);
+	void setHRGraphVisible(bool visible);
 	void updateRange();
 };
