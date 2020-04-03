@@ -17,7 +17,6 @@ private:
 	enum Graph {
 		IR,
 		RED,
-		BEAT,
 		HR
 	};
 
@@ -43,7 +42,6 @@ private slots:
 	void receivedNewData();
 	void setRedLedGraphVisible(bool visible);
 	void setIrLedGraphVisible(bool visible);
-	void setBeatGraphVisible(bool visible);
 	void setHRGraphVisible(bool visible);
 	void updateRange();
 };

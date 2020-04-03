@@ -13,8 +13,8 @@ auto constexpr TIMER_INTERVAL = 1000;
 auto constexpr FILTER_ORDER = 2;
 
 auto constexpr SAMPLING_RATE = 100.0;	// Hz
-auto constexpr LOW_CUT_FREQ = 1.4;		// / 0.5;
-auto constexpr HIGH_CUT_FREQ = 6;		// / 0.5;
+auto constexpr LOW_CUT_FREQ = 1.4;		// Hz
+auto constexpr HIGH_CUT_FREQ = 6;		// Hz
 
 class QTimer;
 
@@ -34,9 +34,9 @@ private:
 	const QString RED_DATA_NAME = "Red led";
 	const QString BEAT_DATA_NAME = "Beat";
 	const QString HEART_DATA_NAME = "Heart Rate";
-	bool irDataEnabled = true;
-	bool redDataEnabled = true;
-	bool hrDataEnabled = true;
+	bool irDataEnabled = false;
+	bool redDataEnabled = false;
+	bool hrDataEnabled = false;
 
 	std::set<SensorData> sensorDataSet;
 	std::set<qint64> beatSet;
@@ -70,8 +70,6 @@ private:
 		const typename std::vector<T>::iterator & end,
 		const Functor & mapF
 	);
-	static double msToCustomPlotMs(qint64 ms);
-	static qint64 customPlotMsToMs(double cMs);
 	static std::string timestampStringFromMsSinceEpoch(qint64 ms);
 
 public:
@@ -102,10 +100,12 @@ public:
 	void setHeartRateQuantileN(unsigned int n);
 	QString getHeartRateDataName() const;
 	QVector<HeartRate> getHeartRate(qint64 laterThan = -1);
-	//QVector<HeartRate> getMeanHeartRate(qint64 laterThan = -1, unsigned int meanForN = 10);
-	QVector<HeartRate> getQuantileMeanHeartRate(qint64 laterThan = -1, unsigned int quantileForN = 10);
+	QVector<HeartRate> getQuantileMeanHeartRate(qint64 laterThan = -1);
 	QVector<double> getXHRData() const;
 	QVector<double> getYHRData() const;
+
+	static double msToCustomPlotMs(qint64 ms);
+	static qint64 customPlotMsToMs(double cMs);
 
 	bool isDataSaved() { return dataSaved; };
 

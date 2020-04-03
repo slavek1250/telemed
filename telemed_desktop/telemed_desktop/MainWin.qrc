@@ -1,6 +1,8 @@
 <RCC>
-  <qresource prefix="MainWin"/>
-  <qresource prefix="icons">
+  <qresource prefix="/MainWin">
+    <file>media/heart_rate.ico</file>
+  </qresource>
+  <qresource prefix="/icons">
     <file>media/icons/clear.ico</file>
     <file>media/icons/save.ico</file>
     <file>media/icons/start.ico</file>

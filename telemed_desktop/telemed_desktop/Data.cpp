@@ -52,6 +52,7 @@ void Data::clear() {
 	sensorDataSet.clear();
 	beatSet.clear();
 	heartRateVec.clear();
+	heartRateVecRaw.clear();
 	begMs = 0;
 	dataSaved = true;
 }
@@ -185,8 +186,7 @@ QVector<double> Data::getXBeatData() {
 }
 
 QVector<double> Data::getYBeatData(int rangeSizeInSeconds) {
-	auto begin = getRangeBegin((*sensorDataSet.rbegin()).getMs() - rangeSizeInSeconds * 1000);
-	auto max = sensorDataMinMax(begin, sensorDataSet.end()).second;
+	auto max = getDataMinMax(rangeSizeInSeconds).second;
 	return QVector<double>(beatSet.size(), max);
 }
 
@@ -204,61 +204,12 @@ QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
 	std::copy(begin, heartRateVec.end(), hr.begin());
 	return hr;
 }
-/*
-QVector<HeartRate> Data::getMeanHeartRate(qint64 laterThan, unsigned int meanForN) {
-	QVector<HeartRate> hrVec(heartRateVec.size());
-	double sum = 0.0;
-	for (int i = 0, n = 0; i < heartRateVec.size(); ++i) {
-		sum += heartRateVec.at(i).getHR();
-		if (n != meanForN)
-			++n;
-		else {
-			sum -= heartRateVec.at(i - meanForN).getHR();
-		}
-		hrVec[i] = HeartRate{
-			heartRateVec.at(i).getBeginMs(),
-			heartRateVec.at(i).getEndMs(),
-			sum / n
-		};
-	}
-	if (laterThan != -1) {
-		auto newEnd = std::remove_if(hrVec.begin(), hrVec.end(), 
-			[laterThan](const HeartRate & hr)->bool {
-				return hr.getBeginMs() <= laterThan;
-		});
-		hrVec.erase(newEnd, hrVec.end());
-	}
-	return hrVec;
-}
-*/
-QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan, unsigned int quantileForN) {
+
+QVector<HeartRate> Data::getQuantileMeanHeartRate(qint64 laterThan) {
 	auto begin = getHeartRateBegin(laterThan);
 	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
 	std::copy(begin, heartRateVec.end(), out.begin());
 	return out;
-
-	/*
-	auto begin = getHeartRateBegin(laterThan);
-	auto beginIndex = std::distance(heartRateVec.begin(), begin);
-	QVector<HeartRate> out(std::distance(begin, heartRateVec.end()));
-
-	for (int i = beginIndex; i < heartRateVec.size(); ++i) {
-		auto quantileBegin = heartRateVec.begin();
-		if ((i - (int)quantileForN + 1) >= 0)
-			std::advance(quantileBegin, i - quantileForN + 1);
-		auto quantileEnd = heartRateVec.begin();
-		std::advance(quantileEnd, i + 1);
-
-		out[i - beginIndex] = HeartRate{
-			heartRateVec.at(i).getBeginMs(),
-			heartRateVec.at(i).getEndMs(),
-			quantileMean<HeartRate>(quantileBegin, quantileEnd,
-				[](const HeartRate & v)->double { return v.getHR(); }
-			)
-		};
-	}
-	return out;
-	*/
 }
 
 QVector<double> Data::getXHRData() const {
@@ -289,6 +240,12 @@ void Data::processNewData(const QString & data_) {
 		qDebug() << ex.what();
 		return;
 	}
+	try {
+		qDebug() << data["status"].get<std::string>().c_str();
+		return;
+	}
+	catch (std::exception ex) {}
+	
 	// set begin time of measures
 	if (begMs == 0) {
 		auto max = std::max_element(data.begin(), data.end(), 

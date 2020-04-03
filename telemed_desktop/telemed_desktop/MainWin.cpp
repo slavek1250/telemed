@@ -20,8 +20,8 @@ MainWin::MainWin(QWidget *parent)
 	this->showMaximized();
 
 	titleSaved();
-	//ui.tableDockWgt->setVisible(false);
-	//ui.propDockWgt->setVisible(false);
+	ui.tableDockWgt->setVisible(false);
+	ui.propDockWgt->setVisible(false);
 	ui.plotLayout->addWidget(plot);
 	setupPlot();
 
@@ -31,7 +31,8 @@ MainWin::MainWin(QWidget *parent)
 	ui.ipEdt->setValidator(new QRegExpValidator(
 		QRegExp("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), this
 	));
-	
+
+	data->setHeartRateQuantileN(9);
 	devApi->setDeviceIp(ui.ipEdt->text());
 
 	connect(ui.actionStartStop, &QAction::toggled, this, &MainWin::startStop);
@@ -45,7 +46,6 @@ MainWin::MainWin(QWidget *parent)
 		devApi, &DeviceApi::setRedLedCurrent);
 	connect(ui.redChckBox, &QCheckBox::toggled, this, &MainWin::setRedLedGraphVisible);
 	connect(ui.irChckBox, &QCheckBox::toggled, this, &MainWin::setIrLedGraphVisible);
-	connect(ui.beatChckBox, &QCheckBox::toggled, this, &MainWin::setBeatGraphVisible);
 	connect(ui.hrChckBox, &QCheckBox::toggled, this, &MainWin::setHRGraphVisible);
 	connect(ui.rangeLn, &QLineEdit::editingFinished, this, &MainWin::updateRange);
 }
@@ -68,27 +68,22 @@ void MainWin::startStop(bool toggled) {
 void MainWin::setupPlot() {	
 	ui.irChckBox->setText(data->getYIrSensorDataName());
 	ui.redChckBox->setText(data->getYRedSensorDataName());
-	ui.beatChckBox->setText(data->getBeatDataName());
 	ui.hrChckBox->setText(data->getHeartRateDataName());
 
 	plot->addGraph();
 	plot->graph(Graph::IR)->setPen(QPen(Qt::blue));
 	plot->graph(Graph::IR)->setName(data->getYIrSensorDataName());
-
+	
 	plot->addGraph();
 	plot->graph(Graph::RED)->setPen(QPen(Qt::red));
 	plot->graph(Graph::RED)->setName(data->getYRedSensorDataName());	
 
 	plot->addGraph();
-	plot->graph(Graph::BEAT)->setLineStyle(QCPGraph::lsNone);
-	plot->graph(Graph::BEAT)->setScatterStyle(
-		QCPScatterStyle(
-			QPixmap("media/arrow-down-icon.png").scaled(30, 30)
-	));
-	plot->graph(Graph::BEAT)->setName(data->getBeatDataName());
-
-	plot->addGraph();
-	plot->graph(Graph::HR)->setPen(QPen(Qt::green));
+	QPen hrPen;
+	hrPen.setColor(QColor(Qt::green));
+	hrPen.setWidth(3);
+	plot->graph(Graph::HR)->setPen(hrPen);
+	plot->graph(Graph::HR)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 10));
 	plot->graph(Graph::HR)->setName(data->getHeartRateDataName());
 
 	plot->legend->setVisible(true);
@@ -99,8 +94,8 @@ void MainWin::setupPlot() {
 
 	setIrLedGraphVisible(ui.irChckBox->isChecked());
 	setRedLedGraphVisible(ui.redChckBox->isChecked());
-	setBeatGraphVisible(ui.beatChckBox->isChecked());
 	setHRGraphVisible(ui.hrChckBox->isChecked());
+	updateRange();
 }
 
 void MainWin::titleUnsaved() {
@@ -162,35 +157,29 @@ void MainWin::receivedNewData() {
 		data->getXSensorData(lastCustomPlotMsMainData),
 		data->getYRedSensorData(lastCustomPlotMsMainData)
 	);
-	plot->graph(Graph::BEAT)->setData(
-		data->getXBeatData(),
-		data->getYBeatData(ui.rangeLn->text().toInt())
-	);
 	plot->graph(Graph::HR)->setData(
 		data->getXHRData(),
 		data->getYHRData()
 	);
 	lastCustomPlotMsMainData = data->getLastSensorDataCustomPlotMs();
-	updateRange();
 	
-	auto hrs = data->getQuantileMeanHeartRate(lastHRMs, 9);
+	auto hrs = data->getQuantileMeanHeartRate(lastHRMs);
 	for (auto hr : hrs) {
-		QTableWidgetItem * begIt = new QTableWidgetItem(
-			hr.getBeginTimeStr());
 		QTableWidgetItem * endIt = new QTableWidgetItem(
 			hr.getEndTimeStr());
 		QTableWidgetItem * hrIt = new QTableWidgetItem(
 			hr.getHRStr());
 		auto row = ui.HRTab->rowCount();
 		ui.HRTab->setRowCount(row + 1);
-		ui.HRTab->setItem(row, 0, begIt);
-		ui.HRTab->setItem(row, 1, endIt);
-		ui.HRTab->setItem(row, 2, hrIt);
+		ui.HRTab->setItem(row, 0, endIt);
+		ui.HRTab->setItem(row, 1, hrIt);
 	}
 	if (!hrs.isEmpty()) {
 		ui.HRLbl->setText(QString::number(hrs.back().getHR()));
-		lastHRMs = hrs.back().getBeginMs();
+		lastHRMs = hrs.back().getEndMs();
 	}
+
+	updateRange();
 	QScrollBar *sb = ui.HRTab->verticalScrollBar();
 	sb->setValue(sb->maximum());
 }
@@ -205,10 +194,6 @@ void MainWin::setIrLedGraphVisible(bool visible) {
 	setGraphVisible(Graph::IR, visible);
 }
 
-void MainWin::setBeatGraphVisible(bool visible) {
-	setGraphVisible(Graph::BEAT, visible);
-}
-
 void MainWin::setHRGraphVisible(bool visible) {
 	data->setHearRateEnabled(visible);
 	setGraphVisible(Graph::HR, visible);
@@ -221,6 +206,11 @@ void MainWin::updateRange() {
 	double min = std::floor(yMinMax.first / div - 1) * div;
 	double max = std::ceil(yMinMax.second / div + 1) * div;
 	plot->yAxis->setRange(min, max);
+
+	auto xMax = (ui.irChckBox->isChecked() || ui.redChckBox->isChecked() ? lastCustomPlotMsMainData : 10);
+	if(ui.hrChckBox->isChecked())
+		xMax = std::max(xMax, Data::msToCustomPlotMs(lastHRMs));
+
 	plot->xAxis->setRange(
 		lastCustomPlotMsMainData - range,
 		lastCustomPlotMsMainData
