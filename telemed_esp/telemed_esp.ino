@@ -10,7 +10,6 @@
 #define RED_LED_CURRENT     MAX30100_LED_CURR_0MA
 #define PULSE_WIDTH         MAX30100_SPC_PW_1600US_16BITS
 #define HIGHRES_MODE        true
-#define INT_PIN				2
 #define BUFF_SIZE			130
 
 const char* ssid     = "HRSensor";
@@ -26,13 +25,6 @@ uint16_t buffRedVals[BUFF_SIZE] = { 0 };
 
 LEDCurrent	irLedCurrent = IR_LED_CURRENT,
 			redLedCurrent = RED_LED_CURRENT;
-
-void initMax30100SpO2Interrupt() {
-	Wire.beginTransmission(MAX30100_I2C_ADDRESS);
-	Wire.write(MAX30100_REG_INTERRUPT_ENABLE);
-	Wire.write(MAX30100_IE_ENB_SPO2_RDY);
-	Wire.endTransmission();
-}
 
 void ICACHE_RAM_ATTR handleInterrupt() {
 	Serial.println("OK");
@@ -61,23 +53,14 @@ void dataRequest(AsyncWebServerRequest * request) {
 		if(i != (BUFF_SIZE-1)) str += ",";
 	}
 	str += "]";
-	//Serial.println(buffMs[buffCurrId]);
 	request->send(200, "application/json", str.c_str());
 }
 
 void setup(){
 	Serial.begin(115200);
-  
-	//Serial.println("Setting AP (Access Point)…");
-  
-	//WiFi.softAP(ssid, password);
+ 
 	WiFi.hostname("HRSensor");
-	while(!WiFi.begin("Kala", "0987654321a123"));
-
-	//IPAddress IP = WiFi.softAPIP();
-	//Serial.print("AP IP address: ");
-	//Serial.println(IP);
-	//Serial.println(WiFi.localIP());
+	WiFi.softAP(ssid, password);
 
 	sensor.begin();
 	sensor.setMode(MAX30100_MODE_SPO2_HR);
@@ -89,11 +72,6 @@ void setup(){
 	server.on("/", HTTP_GET, dataRequest);
 	server.on("/set_led_current", HTTP_GET, setLedCurrentRequest);
 	server.begin();
-	/*
-	initMax30100SpO2Interrupt();
-	attachInterrupt(digitalPinToInterrupt(INT_PIN), handleInterrupt, FALLING);
-	pinMode(INT_PIN, INPUT_PULLUP);
-	*/
 }
  
 void loop(){  

@@ -62,48 +62,30 @@ void Data::saveAs(const QString & filepath) {
 	XLDocument doc;
 
 	doc.CreateDocument(filepath.toStdString());
-	doc.Workbook().AddWorksheet("Raw data");
-	auto wks = doc.Workbook().Worksheet("Raw data");
-	wks.Cell("A1").Value() = "Timestamp";
-	wks.Cell("B1").Value() = "Millis since begin";
-	wks.Cell("C1").Value() = "IR led";
-	wks.Cell("D1").Value() = "Red led";
-	int row = 2;
-	qint64 beginMs = (*sensorDataSet.begin()).getMs();
-	for (auto & sd : sensorDataSet) {
-		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(sd.getMs());
-		wks.Cell(row, 2).Value() = sd.getMs() - beginMs;
-		wks.Cell(row, 3).Value() = sd.getIrLed();
-		wks.Cell(row++, 4).Value() = sd.getRedLed();
-	}
-
-	doc.Workbook().AddWorksheet("Beats");
-	wks = doc.Workbook().Worksheet("Beats");
-	wks.Cell("A1").Value() = "Timestamp";
-	wks.Cell("B1").Value() = "Millis since begin";
-	row = 2;
-	beginMs = *beatSet.begin();
-	for (auto & beat : beatSet) {
-		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(beat);
-		wks.Cell(row++, 2).Value() = beat - beginMs;
-	}
 
 	doc.Workbook().AddWorksheet("Heart rate");
-	wks = doc.Workbook().Worksheet("Heart rate");
-	wks.Cell("A1").Value() = "Begin time";
-	wks.Cell("B1").Value() = "End time";
-	wks.Cell("C1").Value() = "Begin millis";
-	wks.Cell("D1").Value() = "End millis";
-	wks.Cell("E1").Value() = "Heart Rate [bpm]";
-	row = 2;
-	beginMs = (*heartRateVec.begin()).getBeginMs();
-	for (auto & hr : heartRateVec) {
-		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(hr.getBeginMs());
-		wks.Cell(row, 2).Value() = timestampStringFromMsSinceEpoch(hr.getEndMs());
-		wks.Cell(row, 3).Value() = hr.getBeginMs() - beginMs;
-		wks.Cell(row, 4).Value() = hr.getEndMs() - beginMs;
-		wks.Cell(row++, 5).Value() = hr.getHR();
+	auto wks = doc.Workbook().Worksheet("Heart rate");
+	wks.Cell("A1").Value() = "Timestamp";
+	wks.Cell("B1").Value() = "Heart Rate Raw [bpm]";
+	wks.Cell("C1").Value() = "Heart Quantile Mean [bpm]";
+	for (int row = 0; row < heartRateVec.size() && row < heartRateVecRaw.size(); ++row) {
+		wks.Cell(row + 2, 1).Value() = timestampStringFromMsSinceEpoch(heartRateVec.at(row).getEndMs());
+		wks.Cell(row + 2, 2).Value() = heartRateVecRaw.at(row).getHR();
+		wks.Cell(row + 2, 3).Value() = heartRateVec.at(row).getHR();
 	}
+
+	doc.Workbook().AddWorksheet("Raw data");
+	wks = doc.Workbook().Worksheet("Raw data");
+	wks.Cell("A1").Value() = "Timestamp";
+	wks.Cell("B1").Value() = "IR led";
+	wks.Cell("C1").Value() = "Red led";
+	int row = 2;
+	for (auto & sd : sensorDataSet) {
+		wks.Cell(row, 1).Value() = timestampStringFromMsSinceEpoch(sd.getMs());
+		wks.Cell(row, 2).Value() = sd.getIrLed();
+		wks.Cell(row++, 3).Value() = sd.getRedLed();
+	}
+
 	doc.Workbook().DeleteSheet("Sheet1");
 	doc.SaveDocument();
 	dataSaved = true;
@@ -276,7 +258,7 @@ void Data::processNewData(const QString & data_) {
 
 void Data::detectHeartRate(std::set<SensorData>::iterator begin) {
 	auto it = begin;
-	auto lastHrInVec = heartRateVecRaw.size() ? heartRateVecRaw.size() - 1 : 0;
+	auto lastHrInVec = heartRateVecRaw.size() ? heartRateVecRaw.size() - 1 : -1;
 
 	for (; it != sensorDataSet.end(); ++it) {
 		auto sd = *it;
