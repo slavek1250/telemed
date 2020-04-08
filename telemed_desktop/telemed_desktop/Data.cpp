@@ -182,8 +182,8 @@ QString Data::getHeartRateDataName() const {
 
 QVector<HeartRate> Data::getHeartRate(qint64 laterThan) {
 	auto begin = getHeartRateBegin(laterThan);
-	QVector<HeartRate> hr(std::distance(begin, heartRateVec.end()));
-	std::copy(begin, heartRateVec.end(), hr.begin());
+	QVector<HeartRate> hr(std::distance(begin, heartRateVecRaw.end()));
+	std::copy(begin, heartRateVecRaw.end(), hr.begin());
 	return hr;
 }
 

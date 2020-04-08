@@ -3,18 +3,39 @@
 #include <map>
 #include <typeinfo>
 
+/**
+ * Klasa tworząca instancje obietów dziedziczących po QObject, możliwy dostęp w dowolnym fragemncie kodu.
+ */
 class ObjectFactory
 {
 	// TODO: Smart pointers
 	static std::map<size_t, QObject *> objects;
 
 public:
+	/**
+	 * Metoda przyjmująca surowy wskaźnik na instancję nowego obiektu typu T.
+	 */
 	template<class T>
 	static void createInstance(T * obj);
+
+	/**
+	 * Getter.
+	 * @return Zwraca instancję obiektu typu T.
+	 */
 	template<class T>
 	static T * getInstance();
+
+	/**
+	 * Metoda służąca do sprawdzenia czy istnieje instanacja obiektu typu T.
+	 * @return true Jeżeli istanie.
+	 * @return false Jeżeli nie została dotychczas stowrzona instancja obiektu typu T.
+	 */
 	template<class T>
 	static bool hasInstance();
+
+	/**
+	 * Metoda usuwająca wszystkie instancje obiektów w obrębie fabryki.
+	 */
 	static void deleteFactory();
 };
 

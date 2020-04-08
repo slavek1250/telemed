@@ -175,7 +175,7 @@ void MainWin::receivedNewData() {
 		ui.HRTab->setItem(row, 1, hrIt);
 	}
 	if (!hrs.isEmpty()) {
-		ui.HRLbl->setText(QString::number(hrs.back().getHR()));
+		ui.HRLbl->setText(QString::number(int(hrs.back().getHR() + 0.5)));
 		lastHRMs = hrs.back().getEndMs();
 	}
 

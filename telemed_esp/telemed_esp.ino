@@ -5,31 +5,33 @@
 #include <MAX30100.h>
 #include <Wire.h>
 
-#define SAMPLING_RATE		MAX30100_SAMPRATE_100HZ
-#define IR_LED_CURRENT      MAX30100_LED_CURR_0MA
-#define RED_LED_CURRENT     MAX30100_LED_CURR_0MA
-#define PULSE_WIDTH         MAX30100_SPC_PW_1600US_16BITS
+#define SAMPLING_RATE		MAX30100_SAMPRATE_100HZ			/**< Czêstotliwoœæ wykonywania pomiarów w Hz. */
+#define IR_LED_CURRENT      MAX30100_LED_CURR_0MA			/**< Pocz¹tkowy pr¹d diody podczerwonej. */
+#define RED_LED_CURRENT     MAX30100_LED_CURR_0MA			/**< Pocz¹tkowy pr¹d diody czerwonej. */
+#define PULSE_WIDTH         MAX30100_SPC_PW_1600US_16BITS	/**< Dok³adnoœæ pomieru, 16 bitów. */
 #define HIGHRES_MODE        true
 #define BUFF_SIZE			130
 
-const char* ssid     = "HRSensor";
-const char* password = "123456789";
+const char* ssid     = "HRSensor";		/**< SSID udostêpnianej sieci. */
+const char* password = "123456789";		/**< Has³o sieci. */
 
-AsyncWebServer server(80);
-MAX30100 sensor;
+AsyncWebServer server(80);				/**< Asynchroniczny obiekt na porcie 80. */
+MAX30100 sensor;						/**< Obiekt sonsora MAX30100. */
 
-uint8_t buffCurrId = 0;
-unsigned long buffMs[BUFF_SIZE] = { 0 };
-uint16_t buffIrVals[BUFF_SIZE] = { 0 };
-uint16_t buffRedVals[BUFF_SIZE] = { 0 };
+uint8_t buffCurrId = 0;						/**< Id obecnej komórki w buforze. */
+unsigned long buffMs[BUFF_SIZE] = { 0 };	/**< Bufor milisekund. */
+uint16_t buffIrVals[BUFF_SIZE] = { 0 };		/**< Bufor wartoœæ diody podczerwonej. */
+uint16_t buffRedVals[BUFF_SIZE] = { 0 };	/**< Bufor wartoœæ diody czerwonej. */
 
-LEDCurrent	irLedCurrent = IR_LED_CURRENT,
-			redLedCurrent = RED_LED_CURRENT;
+LEDCurrent	irLedCurrent = IR_LED_CURRENT,		/**< Zmienna wartoœci pr¹du diody podczerwonej. */
+			redLedCurrent = RED_LED_CURRENT;	/**< Zmienna wartoœci pr¹du diody czerwonej. */
 
-void ICACHE_RAM_ATTR handleInterrupt() {
-	Serial.println("OK");
-}
-
+/**
+ * Funkcja obs³uguj¹ca ¿adania typu GET przychodz¹ce na adres:
+ * <pre>http://192.168.4.1/set_led_current</pre>.
+ * ¯¹dania ustawienie pradu diod.
+ * @param request Obiekt ¿¹dania.
+ */
 void setLedCurrentRequest(AsyncWebServerRequest * request) {
 	if (request->hasParam("ir")) {
 		AsyncWebParameter* p = request->getParam("ir");
@@ -43,6 +45,12 @@ void setLedCurrentRequest(AsyncWebServerRequest * request) {
 	request->send(200, "application/json", "{\"status\":\"OK\"}");
 }
 
+/**
+ * Funkcja obs³uguj¹ca ¿adania typu GET przychodz¹ce na adres:
+ * <pre>http://192.168.4.1/</pre>.
+ * ¯¹dania pobrania dancyh z bufora.
+ * @param request Obiekt ¿¹dania.
+ */
 void dataRequest(AsyncWebServerRequest * request) {
 	String str = "[";
 	for (uint8_t i = 0; i < BUFF_SIZE; ++i) {
@@ -56,6 +64,12 @@ void dataRequest(AsyncWebServerRequest * request) {
 	request->send(200, "application/json", str.c_str());
 }
 
+/**
+ * Funkcja inicjalizuj¹ca:
+ *	- Access Point,
+ *	- Czujnik MAX30100,
+ *	- Serwer.
+ */
 void setup(){
 	Serial.begin(115200);
  
@@ -74,6 +88,9 @@ void setup(){
 	server.begin();
 }
  
+/**
+ * Program g³ówny. Nieskoñczona pêtla odczytuj¹ca wartoœæ z czujnika je¿eli s¹ dostêpne.
+ */
 void loop(){  
 	uint16_t ir, red;
 	sensor.update();

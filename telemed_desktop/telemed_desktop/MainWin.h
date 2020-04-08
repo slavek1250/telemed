@@ -6,11 +6,18 @@
 class QCustomPlot;
 class Data;
 
+/**
+ * Klasa główna programu.
+ */
 class MainWin : public QMainWindow
 {
 	Q_OBJECT
 
 public:
+	/**
+	 * Domyślny konstruktor. 
+	 * @param parent Przodek obiektu.
+	 */
 	MainWin(QWidget *parent = Q_NULLPTR);
 
 private:
